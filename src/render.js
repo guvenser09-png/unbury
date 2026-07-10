@@ -41,6 +41,8 @@ export class BoardRenderer {
     this.ghost = null;   // {cells, valid, glowRows, glowCols, color}
     this.bombHover = null;
     this.artDim = 0.4;   // revealed-art opacity; fades to ~0.1 while aiming
+    this.dragging = false; // while true, empty cells lift and rocks recede
+    this.rejects = [];   // {cells, t0} red flash on refused drops
     this.gameOverCrack = 0;
     this.desat = 0;
     this.last = performance.now();
@@ -115,6 +117,10 @@ export class BoardRenderer {
     }
     for (const cell of ev.revealedNow) this.blooms.push({ cell, t0: now });
     if (this.opts.settings().shake) this.shake = { mag: 5, t0: now, dur: 200 };
+  }
+
+  flashReject(cells) {
+    this.rejects.push({ cells: cells.slice(), t0: performance.now() });
   }
 
   addCrack(isRow, idx, t0) {
@@ -202,7 +208,8 @@ export class BoardRenderer {
       const revealed = state ? state.revealed[cell] : 0;
 
       if (v === 0) {
-        ctx.fillStyle = COL.cellEmpty;
+        // while dragging, buildable cells lift so the legal area pops
+        ctx.fillStyle = this.dragging ? '#2B3542' : COL.cellEmpty;
         roundRect(ctx, x, y, this.cell, this.cell, 5);
         ctx.fill();
         if (revealed && img) {
@@ -210,6 +217,14 @@ export class BoardRenderer {
         }
       } else if (v === OBSTACLE) {
         this.drawObstacle(ctx, x, y, cell);
+        if (this.dragging) {
+          // rocks recede while aiming — they are not a drop target
+          ctx.globalAlpha = 0.35;
+          ctx.fillStyle = '#05070A';
+          roundRect(ctx, x, y, this.cell, this.cell, 5);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
       } else {
         this.drawMineral(ctx, x, y, this.cell, v);
       }
@@ -246,6 +261,22 @@ export class BoardRenderer {
       roundRect(ctx, tl.x - 2, tl.y - 2, br.x + this.cell - tl.x + 4, br.y + this.cell - tl.y + 4, 8);
       ctx.stroke();
     }
+
+    // refused-drop flash: outline the cells that blocked the placement
+    this.rejects = this.rejects.filter(rj => {
+      const el = (now - rj.t0) / 450;
+      if (el >= 1) return false;
+      ctx.globalAlpha = 1 - el;
+      ctx.strokeStyle = '#FF5A67';
+      ctx.lineWidth = 2.5;
+      for (const cell of rj.cells) {
+        const { x, y } = this.cellXY(cell);
+        roundRect(ctx, x + 1, y + 1, this.cell - 2, this.cell - 2, 5);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      return true;
+    });
 
     // dying cells (clear animation: scale-out with mineral color)
     this.dying = this.dying.filter(d => {

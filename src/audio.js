@@ -66,6 +66,12 @@ export function place() {
 }
 
 export function invalid() { tone({ f0: 260, dur: 0.03, gain: 0.08 }); }
+
+export function reject() {
+  tone({ f0: 220, f1: 160, dur: 0.09, gain: 0.16 });
+  tone({ f0: 160, f1: 120, dur: 0.12, gain: 0.14, delay: 0.06 });
+  vibrate(35);
+}
 export function pickup() { tone({ f0: 300, f1: 380, dur: 0.05, gain: 0.1 }); }
 export function button() { tone({ f0: 440, dur: 0.025, gain: 0.08 }); }
 

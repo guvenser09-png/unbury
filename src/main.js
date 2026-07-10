@@ -76,6 +76,11 @@ async function boot() {
         app.streak.best = Math.max(app.streak.best, info.best_streak || 0);
         save('fl_streak', app.streak);
       }
+      // rehydrate the name if this browser lost its local copy
+      if (info.name && !localStorage.getItem('fl_name')) {
+        localStorage.setItem('fl_name', info.name);
+        localStorage.setItem('fl_name_prompted', '1');
+      }
       const rec = dailyRecord();
       if (rec && info.percentile != null && (rec.percentile == null || rec.rank == null)) {
         rec.percentile = info.percentile;
@@ -355,8 +360,10 @@ function bindDrag() {
       drag.pointerType = e.pointerType;
       const dim = drawPieceSprite(dragCanvas, drag.piece, item.color, renderer.cell, renderer.gap);
       drag.w = dim.w; drag.h = dim.h;
+      drag.blockers = [];
       dragEl.classList.remove('hidden', 'returning');
       slot.classList.add('dragging');
+      renderer.dragging = true;
       SFX.pickup();
       moveDrag(e);
     });
@@ -398,6 +405,21 @@ function moveDrag(e) {
     renderer.ghost = null;
     drag.target = null;
   }
+
+  // when hovering an illegal spot over the board, remember which occupied
+  // cells block it and tint the dragged piece red — "not here" at a glance
+  const inBoard = row > -2 && col > -2 && row < 9 && col < 9;
+  drag.blockers = [];
+  if (inBoard && !valid) {
+    for (const [r, c] of drag.piece.cells) {
+      const rr = row + r, cc = col + c;
+      if (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
+        const idx = rr * 8 + cc;
+        if (app.game.board[idx] !== 0) drag.blockers.push(idx);
+      }
+    }
+  }
+  dragEl.style.filter = inBoard && !valid ? 'drop-shadow(0 0 8px rgba(255,90,103,0.85))' : '';
 }
 
 function pieceIndex(piece) { return E.PIECES.indexOf(piece); }
@@ -429,6 +451,8 @@ function endDrag() {
   const target = drag.target;
   drag.active = false;
   renderer.ghost = null;
+  renderer.dragging = false;
+  dragEl.style.filter = '';
   document.querySelectorAll('.slot').forEach(s => s.classList.remove('dragging'));
 
   if (target) {
@@ -438,7 +462,22 @@ function endDrag() {
     handleMoveEvent(ev);
   } else {
     dragEl.classList.add('returning');
-    SFX.invalid();
+    if (drag.blockers && drag.blockers.length) {
+      // the drop was refused by occupied cells: buzz, flash the culprits red,
+      // nudge the board — the player must FEEL the "no"
+      SFX.reject();
+      renderer.flashReject(drag.blockers);
+      if (settings.shake && !settings.reducedMotion) {
+        renderer.shake = { mag: 2, t0: performance.now(), dur: 110 };
+      }
+      const hasRock = drag.blockers.some(i => app.game.board[i] === E.OBSTACLE);
+      if (hasRock && !localStorage.getItem('fl_rock_tip')) {
+        localStorage.setItem('fl_rock_tip', '1');
+        toast('💡 Rocks can’t hold pieces — fill their row or column to break them');
+      }
+    } else {
+      SFX.invalid();
+    }
     setTimeout(() => dragEl.classList.add('hidden'), 190);
   }
 }
@@ -446,6 +485,8 @@ function endDrag() {
 function cancelDrag() {
   drag.active = false;
   renderer.ghost = null;
+  renderer.dragging = false;
+  dragEl.style.filter = '';
   dragEl.classList.add('hidden');
   document.querySelectorAll('.slot').forEach(s => s.classList.remove('dragging'));
   renderTray();
@@ -540,7 +581,16 @@ function doGuess(pick) {
 const NAME_A = ['Amber', 'Copper', 'Quartz', 'Jade', 'Cobalt', 'Onyx', 'Flint', 'Slate', 'Ruby', 'Basalt', 'Golden', 'Crystal', 'Iron', 'Silver', 'Magma', 'Fossil'];
 const NAME_B = ['Fox', 'Mole', 'Otter', 'Badger', 'Raven', 'Lynx', 'Digger', 'Miner', 'Owl', 'Wolf', 'Beetle', 'Turtle', 'Falcon', 'Bear', 'Gecko', 'Marmot'];
 
+// Deterministic per device: the suggested name is always the same on this
+// device, so a returning player who skipped saving still sees a familiar name.
 function genName() {
+  const k = localStorage.getItem('fl_device_key') || 'seed';
+  let h = 0;
+  for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+  return NAME_A[h % NAME_A.length] + NAME_B[(h >> 4) % NAME_B.length];
+}
+
+function randName() {
   return NAME_A[Math.floor(Math.random() * NAME_A.length)] + NAME_B[Math.floor(Math.random() * NAME_B.length)];
 }
 
@@ -549,7 +599,7 @@ function esc(s) {
 }
 
 function openNamePrompt() {
-  $('name-input').value = localStorage.getItem('fl_name') || genName();
+  $('name-input').value = localStorage.getItem('fl_name') || (app.server && app.server.name) || genName();
   $('ov-name').classList.remove('hidden');
 }
 
@@ -561,6 +611,7 @@ async function saveName() {
   $('btn-name-save').textContent = 'SAVE NAME';
   if (res && !res.error && res.name) {
     localStorage.setItem('fl_name', res.name);
+    localStorage.setItem('fl_name_prompted', '1');
     $('ov-name').classList.add('hidden');
     toast(`⛏️ Welcome, ${res.name}!`);
     Net.getDaily(app.dateStr).then(info => { if (info && !info.error) app.server = info; });
@@ -678,6 +729,12 @@ async function finalizeRun() {
           save('fl_streak', app.streak);
         }
         app.server = { ...(app.server || {}), players: res.players, played: true, percentile };
+        // nobody stays "Digger" on the wall: auto-claim this device's name
+        if (!localStorage.getItem('fl_name') && !(app.server && app.server.name)) {
+          Net.setName(genName()).then(r => {
+            if (r && !r.error && r.name) localStorage.setItem('fl_name', r.name);
+          });
+        }
         Net.getDaily(app.dateStr).then(info => { if (info && !info.error) app.server = info; });
       } else {
         Net.queueSubmission({ dateStr: app.dateStr, moves: g.moves, score: g.score, revealPctVal: pct, durationMs });
@@ -760,7 +817,7 @@ function showResultPanel({ percentile, rank, players, submittedNow }) {
   $('btn-again').textContent = endless ? 'PLAY AGAIN' : 'PRACTICE AGAIN';
 
   // first counted score just landed on the world board — let them claim a name
-  if (app.mode === 'daily' && submittedNow && Net.isOnlineMode() && !localStorage.getItem('fl_name')) {
+  if (app.mode === 'daily' && submittedNow && Net.isOnlineMode() && !localStorage.getItem('fl_name_prompted')) {
     setTimeout(openNamePrompt, 1600);
   }
 }
@@ -949,9 +1006,12 @@ function bindUI() {
   $('btn-leaderboard').addEventListener('click', openLeaderboard);
   $('btn-lb-close').addEventListener('click', () => $('ov-board').classList.add('hidden'));
 
-  $('btn-name-dice').addEventListener('click', () => { $('name-input').value = genName(); SFX.button(); });
+  $('btn-name-dice').addEventListener('click', () => { $('name-input').value = randName(); SFX.button(); });
   $('btn-name-save').addEventListener('click', saveName);
-  $('btn-name-skip').addEventListener('click', () => $('ov-name').classList.add('hidden'));
+  $('btn-name-skip').addEventListener('click', () => {
+    localStorage.setItem('fl_name_prompted', '1');
+    $('ov-name').classList.add('hidden');
+  });
   $('btn-name-change').addEventListener('click', () => { $('ov-settings').classList.add('hidden'); openNamePrompt(); });
   $('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveName(); });
   $('btn-streak').addEventListener('click', () => {
