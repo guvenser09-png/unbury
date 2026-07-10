@@ -97,7 +97,6 @@ async function boot() {
   setTimeout(() => {
     renderHome();
     show('s-home');
-    if (!localStorage.getItem('fl_tutorial_done')) $('ov-tutorial').classList.remove('hidden');
   }, 250);
   setInterval(tickCountdown, 1000);
   tickCountdown();
@@ -252,6 +251,8 @@ function startGame(mode) {
   updateHUD();
   renderTray();
   updateRerollBtn();
+  // first-ever game: loop the drag gesture demo until they grab a piece
+  if (!localStorage.getItem('fl_hand_done')) $('tut-hand').classList.remove('hidden');
   if (app.game.over) gameOverFlow();
 }
 
@@ -266,6 +267,7 @@ function updateHUD() {
     $('reveal-pct').textContent = pct + '%';
     const showGuess = !g.over && !g.guessUsed && g.answerIndex != null && pct >= 20;
     $('btn-guess').classList.toggle('hidden', !showGuess);
+    if (showGuess) $('btn-guess').textContent = `🔍 I KNOW WHAT IT IS · +${(100 - pct) * 2}`;
     scoreEl.style.color = '';
     subEl.style.color = '';
   } else {
@@ -364,6 +366,10 @@ function bindDrag() {
       dragEl.classList.remove('hidden', 'returning');
       slot.classList.add('dragging');
       renderer.dragging = true;
+      if (!localStorage.getItem('fl_hand_done')) {
+        localStorage.setItem('fl_hand_done', '1');
+        $('tut-hand').classList.add('hidden');
+      }
       SFX.pickup();
       moveDrag(e);
     });
@@ -541,8 +547,8 @@ function openGuess() {
     const j = Math.floor(rng() * (i + 1));
     const tmp = picks[i]; picks[i] = picks[j]; picks[j] = tmp;
   }
-  $('guess-stakes').textContent =
-    `Correct now: +${(100 - E.revealPct(g)) * 2} · Wrong: −${E.GUESS_PENALTY} and the hunt ends.`;
+  $('guess-stakes').innerHTML =
+    `Right: <b style="color:var(--success)">+${(100 - E.revealPct(g)) * 2}</b> &nbsp;·&nbsp; Wrong: <b style="color:var(--danger)">−${E.GUESS_PENALTY}</b> and the hunt ends.`;
   const wrap = $('guess-options');
   wrap.innerHTML = '';
   for (const idx of picks) {
