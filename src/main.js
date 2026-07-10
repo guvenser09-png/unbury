@@ -587,7 +587,9 @@ function genName() {
   const k = localStorage.getItem('fl_device_key') || 'seed';
   let h = 0;
   for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
-  return NAME_A[h % NAME_A.length] + NAME_B[(h >> 4) % NAME_B.length];
+  // unsigned shifts only — a signed >> on a large hash goes negative and
+  // indexes past the array ("Silverundefined", never forget)
+  return NAME_A[(h >>> 8) % NAME_A.length] + NAME_B[(h >>> 4) % NAME_B.length];
 }
 
 function randName() {
@@ -874,8 +876,54 @@ function currentShareText() {
 
 // ---------- leaderboard ----------
 
+function lbTab(which) {
+  $('tab-today').classList.toggle('active', which === 'today');
+  $('tab-hall').classList.toggle('active', which === 'hall');
+  $('lb-today').classList.toggle('hidden', which !== 'today');
+  $('lb-hall').classList.toggle('hidden', which !== 'hall');
+  if (which === 'hall') loadHall();
+}
+
+async function loadHall() {
+  if (app.hall) { renderHall(app.hall); return; }
+  if (!Net.isOnlineMode()) {
+    $('hall-body').innerHTML = '<p class="muted" style="font-size:13px">Offline — the hall opens when you reconnect.</p>';
+    return;
+  }
+  const res = await Net.getHall();
+  if (!res || res.error) {
+    $('hall-body').innerHTML = '<p class="muted" style="font-size:13px">Couldn’t load the hall — try again.</p>';
+    return;
+  }
+  app.hall = res;
+  renderHall(res);
+}
+
+function renderHall(h) {
+  const medal = i => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1);
+  const myName = localStorage.getItem('fl_name');
+  const row = (i, name, right) =>
+    `<div class="lb-row${myName && name === myName ? ' me' : ''}"><span class="lb-rank">${medal(i)}</span><span class="lb-name">${esc(name)}</span><span class="lb-pts">${right}</span></div>`;
+  let html = '';
+  if (h.bestDigs && h.bestDigs.length) {
+    html += '<div class="hall-title">🏆 BEST DIGS EVER</div>';
+    html += h.bestDigs.map((b, i) => row(i, b.name, `${b.score.toLocaleString('en-US')} · #${b.dig}`)).join('');
+  }
+  if (h.streaks && h.streaks.length) {
+    html += '<div class="hall-title">🔥 LONGEST STREAKS</div>';
+    html += h.streaks.map((s, i) => row(i, s.name, `${s.best} day${s.best > 1 ? 's' : ''}${s.alive ? ' 🔥' : ''}`)).join('');
+  }
+  if (h.career && h.career.length) {
+    html += '<div class="hall-title">⛏️ CAREER POINTS</div>';
+    html += h.career.map((c, i) => row(i, c.name, `${c.total.toLocaleString('en-US')} · ${c.digs} digs`)).join('');
+  }
+  $('hall-body').innerHTML = html || '<p class="muted" style="font-size:13px">No legends yet — be the first.</p>';
+}
+
 function openLeaderboard() {
   const rec = dailyRecord();
+  app.hall = null; // refetch per open — the wall may have new legends
+  lbTab('today');
   $('ov-board').classList.remove('hidden');
   $('lb-locked').classList.toggle('hidden', !!rec);
   $('lb-content').classList.toggle('hidden', !rec);
@@ -1005,6 +1053,8 @@ function bindUI() {
 
   $('btn-leaderboard').addEventListener('click', openLeaderboard);
   $('btn-lb-close').addEventListener('click', () => $('ov-board').classList.add('hidden'));
+  $('tab-today').addEventListener('click', () => lbTab('today'));
+  $('tab-hall').addEventListener('click', () => lbTab('hall'));
 
   $('btn-name-dice').addEventListener('click', () => { $('name-input').value = randName(); SFX.button(); });
   $('btn-name-save').addEventListener('click', saveName);

@@ -61,6 +61,11 @@ export async function setName(name) {
   return call('fl-set-name', { name });
 }
 
+// → { bestDigs, streaks, career } — all-time hall of fame
+export async function getHall() {
+  return call('fl-hall', {});
+}
+
 // Queue for offline submissions, flushed on reconnect / next boot.
 export function queueSubmission(payload) {
   const q = JSON.parse(localStorage.getItem('fl_queue') || '[]');

@@ -152,6 +152,13 @@ input[type=range] { width: 130px; accent-color: var(--accent); }
 .lb-row.me .lb-rank { color: var(--accent); }
 .lb-row .lb-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-row .lb-pts { font-variant-numeric: tabular-nums; }
+.lb-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.lb-tabs button { flex: 1; padding: 9px; border-radius: 999px; font-size: 13px; font-weight: 800;
+  letter-spacing: .05em; background: var(--cell-empty); color: var(--text-lo); }
+.lb-tabs button.active { background: rgba(255,176,32,.15); color: var(--accent); }
+.hall-title { font-size: 12px; font-weight: 800; letter-spacing: .1em; color: var(--text-lo);
+  text-align: left; margin: 14px 4px 4px; }
+.hall-title:first-child { margin-top: 0; }
 #name-input { background: var(--cell-empty); border: 1.5px solid var(--cell-stroke); border-radius: 12px;
   padding: 12px; color: var(--text-hi); font-family: var(--font); font-weight: 700; font-size: 16px;
   text-align: center; flex: 1; min-width: 0; outline: none; }
@@ -313,17 +320,27 @@ canvas { -webkit-user-drag: none; user-drag: none; }
 
 <div id="ov-board" class="overlay hidden">
   <div class="panel">
-    <h2 id="lb-title">Today's results</h2>
-    <div id="lb-locked" class="hidden">
-      <p style="font-size:40px;margin:10px 0">🔒</p>
-      <p class="muted" style="font-size:14px">Play today's dig to unlock results.</p>
+    <h2 id="lb-title">Leaderboard</h2>
+    <div class="lb-tabs">
+      <button id="tab-today" class="active">TODAY</button>
+      <button id="tab-hall">ALL-TIME</button>
     </div>
-    <div id="lb-content" class="hidden">
-      <div class="lb-big" id="lb-percentile">—</div>
-      <p class="muted" id="lb-players" style="font-size:14px"></p>
-      <div id="lb-top10" style="margin-top:12px"></div>
-      <p class="muted" id="lb-score" style="font-size:14px;margin-top:10px"></p>
-      <p class="muted" style="font-size:12px;margin-top:12px" id="lb-note"></p>
+    <div id="lb-today">
+      <div id="lb-locked" class="hidden">
+        <p style="font-size:40px;margin:10px 0">🔒</p>
+        <p class="muted" style="font-size:14px">Play today's dig to unlock results.</p>
+      </div>
+      <div id="lb-content" class="hidden">
+        <div class="lb-big" id="lb-percentile">—</div>
+        <p class="muted" id="lb-players" style="font-size:14px"></p>
+        <div id="lb-top10" style="margin-top:12px"></div>
+        <p class="muted" id="lb-score" style="font-size:14px;margin-top:10px"></p>
+        <p class="muted" style="font-size:12px;margin-top:12px" id="lb-note"></p>
+      </div>
+    </div>
+    <div id="lb-hall" class="hidden">
+      <div id="hall-body"><p class="muted" style="font-size:13px">Loading…</p></div>
+      <p class="muted" style="font-size:12px;margin-top:12px">Every entry is a server-verified run. History is permanent — dig your way in.</p>
     </div>
     <div class="stack"><button id="btn-lb-close" class="cta">CLOSE</button></div>
   </div>
@@ -367,7 +384,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
 
 <div id="toast" class="hidden"></div>
 
-<script src="src/config.js?v=17"></script>
-<script type="module" src="src/main.js?v=17"></script>
+<script src="src/config.js?v=18"></script>
+<script type="module" src="src/main.js?v=18"></script>
 </body>
 </html>
