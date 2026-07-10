@@ -518,11 +518,17 @@ function doGuess(pick) {
   $('ov-guess').classList.add('hidden');
   const ev = E.applyMove(app.game, { t: 'g', pick });
   if (ev.error) { toast(ev.error); return; }
+  const now = performance.now();
   if (ev.correct) {
     SFX.fullClear();
+    if (renderer) {
+      renderer.goldFlash = now;
+      renderer.float(27, `🔍 +${ev.bonus}`, now, '#3DDC97');
+    }
     toast(`🔍 Nailed it at ${ev.atPct}% — +${ev.bonus}!`);
   } else {
     SFX.invalid();
+    if (renderer) renderer.float(27, ev.penalty > 0 ? `🔍 −${ev.penalty}` : '🔍 ✗', now, '#FF5A67');
     toast(ev.penalty > 0 ? `Not quite — the wager cost you ${ev.penalty}` : 'Not quite — keep digging');
   }
   updateHUD();
@@ -726,7 +732,9 @@ function showResultPanel({ percentile, rank, players, submittedNow }) {
   }
 
   animateNumber($('go-score'), g.score, v => v.toLocaleString('en-US'), 900);
-  const guessBit = g.guessedAtPct != null ? ` · 🔍 named it at ${g.guessedAtPct}%` : '';
+  let guessBit = '';
+  if (g.guessedAtPct != null) guessBit = ` · 🔍 named it at ${g.guessedAtPct}% (+${g.guessBonus})`;
+  else if (g.guessUsed) guessBit = ` · 🔍 wrong guess (−${E.GUESS_PENALTY})`;
   $('go-stats').textContent = `biggest combo ×${g.maxCombo} · ${g.linesCleared} lines${guessBit}`;
 
   const pctEl = $('go-percentile');
