@@ -240,6 +240,7 @@ function startGame(mode) {
   $('score-sub').textContent = endless ? 'BEST ' + app.endlessBest.toLocaleString('en-US') : 'DIG #' + app.faultNo;
   $('bomb-hint').classList.add('hidden');
   app.bombMode = false;
+  app.bestBeaten = false;
   app.runStart = Date.now();
   lastMilestone = app.mode === 'daily' ? E.revealPct(app.game) : 0;
   show('s-game');
@@ -251,15 +252,46 @@ function startGame(mode) {
 
 function updateHUD() {
   const g = app.game;
-  $('score').textContent = g.score.toLocaleString('en-US');
+  const scoreEl = $('score');
+  const subEl = $('score-sub');
+  scoreEl.textContent = g.score.toLocaleString('en-US');
   if (app.mode !== 'endless') {
     const pct = E.revealPct(g);
     $('reveal-fill').style.width = pct + '%';
     $('reveal-pct').textContent = pct + '%';
     const showGuess = !g.over && !g.guessUsed && g.answerIndex != null && pct >= 20;
     $('btn-guess').classList.toggle('hidden', !showGuess);
+    scoreEl.style.color = '';
+    subEl.style.color = '';
   } else {
     $('btn-guess').classList.add('hidden');
+    // record-chase tension: live gap to the personal best, gold when close,
+    // one-shot celebration the moment the record actually falls
+    const best = app.endlessBest;
+    if (best > 0 && g.score > best) {
+      if (!app.bestBeaten) {
+        app.bestBeaten = true;
+        SFX.fullClear();
+        toast('🏆 NEW BEST!');
+        if (renderer) {
+          renderer.goldFlash = performance.now();
+          renderer.float(27, 'NEW BEST!', performance.now(), '#3DDC97');
+        }
+      }
+      subEl.textContent = `🏆 NEW BEST · +${(g.score - best).toLocaleString('en-US')}`;
+      subEl.style.color = 'var(--success)';
+      scoreEl.style.color = 'var(--success)';
+    } else if (best > 0) {
+      const gap = best - g.score;
+      subEl.textContent = `${gap.toLocaleString('en-US')} TO BEAT`;
+      const near = g.score >= best * 0.85;
+      subEl.style.color = near ? 'var(--accent)' : '';
+      scoreEl.style.color = near ? 'var(--accent)' : '';
+    } else {
+      subEl.textContent = 'FIRST RUN — SET THE BAR';
+      subEl.style.color = '';
+      scoreEl.style.color = '';
+    }
   }
 }
 
