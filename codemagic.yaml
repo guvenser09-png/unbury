@@ -6,9 +6,10 @@ workflows:
     integrations:
       app_store_connect: unbury-asc
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.unbury.app
+      vars:
+        BUNDLE_ID: "com.unbury.app"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
       node: 20.11.0
       xcode: latest
       cocoapods: default
@@ -19,10 +20,22 @@ workflows:
         script: bash scripts/build-www.sh
       - name: Sync Capacitor iOS
         script: npx cap sync ios
-      - name: Set up code signing
+      - name: Fetch signing files (creates bundle id + profile if missing)
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Set up keychain and certificates
+        script: |
+          keychain initialize
+          keychain add-certificates
+      - name: Apply provisioning profiles
         script: xcode-project use-profiles
       - name: Build IPA
-        script: xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
