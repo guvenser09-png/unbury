@@ -41,7 +41,7 @@ export class BoardRenderer {
     this.ghost = null;   // {cells, valid, glowRows, glowCols, color}
     this.bombHover = null;
     this.artDim = 0.4;   // revealed-art opacity; fades to ~0.1 while aiming
-    this.dragging = false; // while true, empty cells lift and rocks recede
+    this.dragging = false;
     this.rejects = [];   // {cells, t0} red flash on refused drops
     this.gameOverCrack = 0;
     this.desat = 0;
@@ -208,8 +208,7 @@ export class BoardRenderer {
       const revealed = state ? state.revealed[cell] : 0;
 
       if (v === 0) {
-        // while dragging, buildable cells lift so the legal area pops
-        ctx.fillStyle = this.dragging ? '#2B3542' : COL.cellEmpty;
+        ctx.fillStyle = COL.cellEmpty;
         roundRect(ctx, x, y, this.cell, this.cell, 5);
         ctx.fill();
         if (revealed && img) {
@@ -217,37 +216,27 @@ export class BoardRenderer {
         }
       } else if (v === OBSTACLE) {
         this.drawObstacle(ctx, x, y, cell);
-        if (this.dragging) {
-          // rocks recede while aiming — they are not a drop target
-          ctx.globalAlpha = 0.35;
-          ctx.fillStyle = '#05070A';
-          roundRect(ctx, x, y, this.cell, this.cell, 5);
-          ctx.fill();
-          ctx.globalAlpha = 1;
-        }
       } else {
         this.drawMineral(ctx, x, y, this.cell, v);
       }
     }
 
     // ghost preview + clairvoyance glow
-    if (this.ghost && state) {
-      if (this.ghost.valid) {
-        for (const r of this.ghost.glowRows) this.glowLine(ctx, true, r, now);
-        for (const c of this.ghost.glowCols) this.glowLine(ctx, false, c, now);
-        const m = MINERALS[this.ghost.color - 1];
-        for (const cell of this.ghost.cells) {
-          const { x, y } = this.cellXY(cell);
-          ctx.globalAlpha = 0.28;
-          ctx.fillStyle = m.fill;
-          roundRect(ctx, x, y, this.cell, this.cell, 5);
-          ctx.fill();
-          ctx.globalAlpha = 1;
-          ctx.strokeStyle = COL.success;
-          ctx.lineWidth = 2;
-          roundRect(ctx, x + 1, y + 1, this.cell - 2, this.cell - 2, 5);
-          ctx.stroke();
-        }
+    if (this.ghost && state && this.ghost.valid) {
+      for (const r of this.ghost.glowRows) this.glowLine(ctx, true, r, now);
+      for (const c of this.ghost.glowCols) this.glowLine(ctx, false, c, now);
+      const m = MINERALS[this.ghost.color - 1];
+      for (const cell of this.ghost.cells) {
+        const { x, y } = this.cellXY(cell);
+        ctx.globalAlpha = 0.28;
+        ctx.fillStyle = m.fill;
+        roundRect(ctx, x, y, this.cell, this.cell, 5);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = COL.success;
+        ctx.lineWidth = 2;
+        roundRect(ctx, x + 1, y + 1, this.cell - 2, this.cell - 2, 5);
+        ctx.stroke();
       }
     }
 
