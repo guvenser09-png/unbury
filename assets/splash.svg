@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
+  <rect width="2732" height="2732" fill="#0E1116"/>
+  <g transform="translate(1126,1126)">
+    <clipPath id="rsq2"><rect width="480" height="480" rx="106"/></clipPath>
+    <g clip-path="url(#rsq2)">
+      <polygon points="0,0 282,0 228,162 282,306 198,480 0,480" fill="#4C9AFF"/>
+      <polygon points="282,0 480,0 480,480 198,480 282,306 228,162" fill="#A78BFA"/>
+      <polyline points="282,-12 228,162 282,306 198,492" fill="none" stroke="#0E1116" stroke-width="34" stroke-linejoin="round"/>
+      <polyline points="282,-12 228,162 282,306 198,492" fill="none" stroke="#FFB020" stroke-width="11" stroke-linejoin="round"/>
+    </g>
+    <circle cx="255" cy="234" r="10" fill="#FFE9B8"/>
+  </g>
+  <text x="1366" y="1760" text-anchor="middle" font-family="Helvetica-Bold, Helvetica, Arial" font-size="96" font-weight="800" letter-spacing="6" fill="#F2F5F9">UNBURY</text>
+</svg>

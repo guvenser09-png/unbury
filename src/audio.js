@@ -118,5 +118,13 @@ export function bomb() {
 let haptics = true;
 export function setHaptics(on) { haptics = on; }
 function vibrate(pattern) {
-  if (haptics && navigator.vibrate) navigator.vibrate(pattern);
+  if (!haptics) return;
+  // native app: real Taptic Engine via Capacitor (iOS ignores navigator.vibrate)
+  const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
+  if (cap) {
+    const total = Array.isArray(pattern) ? pattern.reduce((a, b) => a + b, 0) : pattern;
+    cap.impact({ style: total >= 60 ? 'HEAVY' : total >= 25 ? 'MEDIUM' : 'LIGHT' }).catch(() => {});
+    return;
+  }
+  if (navigator.vibrate) navigator.vibrate(pattern);
 }

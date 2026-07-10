@@ -1,0 +1,17 @@
+{
+  "appId": "com.unbury.app",
+  "appName": "Unbury",
+  "webDir": "www",
+  "backgroundColor": "#0E1116",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0E1116"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "backgroundColor": "#0E1116",
+      "showSpinner": false
+    }
+  }
+}
