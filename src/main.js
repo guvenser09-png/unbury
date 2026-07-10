@@ -35,6 +35,19 @@ let renderer = null;
 function todayUTC() { return new Date().toISOString().slice(0, 10); }
 
 async function boot() {
+  // ?fresh=1 — wipe this device's local state after an explicit confirm
+  // (testing/support tool; the confirm blocks drive-by wipe links)
+  if (new URLSearchParams(location.search).has('fresh')) {
+    history.replaceState(null, '', location.pathname);
+    if (confirm('Start completely fresh on this device? Local progress, streak and name will be reset.')) {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('fl_')) keys.push(k);
+      }
+      keys.forEach(k => localStorage.removeItem(k));
+    }
+  }
   $('boot-bar').style.width = '30%';
   try {
     const res = await fetch('src/data/images.json');
