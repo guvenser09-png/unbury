@@ -497,6 +497,42 @@ function doGuess(pick) {
   autosave();
 }
 
+// ---------- digger name ----------
+
+const NAME_A = ['Amber', 'Copper', 'Quartz', 'Jade', 'Cobalt', 'Onyx', 'Flint', 'Slate', 'Ruby', 'Basalt', 'Golden', 'Crystal', 'Iron', 'Silver', 'Magma', 'Fossil'];
+const NAME_B = ['Fox', 'Mole', 'Otter', 'Badger', 'Raven', 'Lynx', 'Digger', 'Miner', 'Owl', 'Wolf', 'Beetle', 'Turtle', 'Falcon', 'Bear', 'Gecko', 'Marmot'];
+
+function genName() {
+  return NAME_A[Math.floor(Math.random() * NAME_A.length)] + NAME_B[Math.floor(Math.random() * NAME_B.length)];
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function openNamePrompt() {
+  $('name-input').value = localStorage.getItem('fl_name') || genName();
+  $('ov-name').classList.remove('hidden');
+}
+
+async function saveName() {
+  const val = $('name-input').value.trim();
+  if (val.length < 2) { toast('At least 2 characters'); return; }
+  $('btn-name-save').textContent = 'SAVING…';
+  const res = await Net.setName(val);
+  $('btn-name-save').textContent = 'SAVE NAME';
+  if (res && !res.error && res.name) {
+    localStorage.setItem('fl_name', res.name);
+    $('ov-name').classList.add('hidden');
+    toast(`⛏️ Welcome, ${res.name}!`);
+    Net.getDaily(app.dateStr).then(info => { if (info && !info.error) app.server = info; });
+  } else if (res && res.error === 'name rejected') {
+    toast('That name won’t fly — try another');
+  } else {
+    toast('Couldn’t save — check connection');
+  }
+}
+
 // ---------- rewarded stubs (portal adapter) ----------
 
 async function adFlow() {
@@ -604,6 +640,7 @@ async function finalizeRun() {
           save('fl_streak', app.streak);
         }
         app.server = { ...(app.server || {}), players: res.players, played: true, percentile };
+        Net.getDaily(app.dateStr).then(info => { if (info && !info.error) app.server = info; });
       } else {
         Net.queueSubmission({ dateStr: app.dateStr, moves: g.moves, score: g.score, revealPctVal: pct, durationMs });
       }
@@ -681,6 +718,11 @@ function showResultPanel({ percentile, rank, players, submittedNow }) {
   $('btn-share').style.display = app.mode === 'daily' || app.mode === 'practice' ? '' : 'none';
   $('btn-see-board').style.display = app.mode === 'daily' ? '' : 'none';
   $('btn-again').textContent = endless ? 'PLAY AGAIN' : 'PRACTICE AGAIN';
+
+  // first counted score just landed on the world board — let them claim a name
+  if (app.mode === 'daily' && submittedNow && Net.isOnlineMode() && !localStorage.getItem('fl_name')) {
+    setTimeout(openNamePrompt, 1600);
+  }
 }
 
 function animateNumber(el, target, fmt, dur) {
@@ -745,8 +787,19 @@ function openLeaderboard() {
     $('lb-score').textContent = `Your score: ${rec.score.toLocaleString('en-US')} · ${rec.revealPct}% revealed`;
     const players = app.server && app.server.players;
     $('lb-players').textContent = players ? `${players.toLocaleString('en-US')} players today` : '';
+
+    const top = (app.server && app.server.top10) || [];
+    const myName = localStorage.getItem('fl_name');
+    $('lb-top10').innerHTML = top.length
+      ? top.map(t => {
+          const mine = rec.rank === t.rank && (!myName || myName === t.name || t.name === 'Digger');
+          const medal = t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : t.rank;
+          return `<div class="lb-row${mine ? ' me' : ''}"><span class="lb-rank">${medal}</span><span class="lb-name">${esc(t.name)}</span><span class="lb-pts">${t.score.toLocaleString('en-US')}</span></div>`;
+        }).join('')
+      : '';
+
     $('lb-note').textContent = Net.isOnlineMode()
-      ? 'Percentiles come from server-validated replays — provably fair.'
+      ? 'Every score is verified by replaying the moves on the server — provably fair.'
       : 'Offline build — connect a backend to compare with the world.';
   }
 }
@@ -855,6 +908,12 @@ function bindUI() {
 
   $('btn-leaderboard').addEventListener('click', openLeaderboard);
   $('btn-lb-close').addEventListener('click', () => $('ov-board').classList.add('hidden'));
+
+  $('btn-name-dice').addEventListener('click', () => { $('name-input').value = genName(); SFX.button(); });
+  $('btn-name-save').addEventListener('click', saveName);
+  $('btn-name-skip').addEventListener('click', () => $('ov-name').classList.add('hidden'));
+  $('btn-name-change').addEventListener('click', () => { $('ov-settings').classList.add('hidden'); openNamePrompt(); });
+  $('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveName(); });
   $('btn-streak').addEventListener('click', () => {
     toast(`🔥 ${app.streak.count} day streak · best ${app.streak.best}`);
   });

@@ -145,6 +145,17 @@ input[type=range] { width: 130px; accent-color: var(--accent); }
 .share-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .share-grid .cta { grid-column: 1 / -1; }
 .lb-big { font-size: 40px; font-weight: 800; color: var(--accent); margin: 6px 0; }
+.lb-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px;
+  font-size: 14px; font-weight: 700; }
+.lb-row.me { background: rgba(255,176,32,.14); color: var(--accent); }
+.lb-row .lb-rank { width: 26px; color: var(--text-lo); text-align: right; }
+.lb-row.me .lb-rank { color: var(--accent); }
+.lb-row .lb-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-row .lb-pts { font-variant-numeric: tabular-nums; }
+#name-input { background: var(--cell-empty); border: 1.5px solid var(--cell-stroke); border-radius: 12px;
+  padding: 12px; color: var(--text-hi); font-family: var(--font); font-weight: 700; font-size: 16px;
+  text-align: center; flex: 1; min-width: 0; outline: none; }
+#name-input:focus { border-color: var(--accent); }
 .tut-step { display: flex; gap: 12px; align-items: flex-start; text-align: left; margin-bottom: 14px; }
 .tut-step b { color: var(--accent); font-size: 18px; }
 .tut-step p { font-size: 14px; color: var(--text-lo); line-height: 1.45; }
@@ -292,6 +303,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
     <div class="setting-row"><span>Screen shake</span><button class="toggle" id="tog-shake" aria-label="Screen shake"></button></div>
     <div class="setting-row"><span>Reduced motion</span><button class="toggle" id="tog-motion" aria-label="Reduced motion"></button></div>
     <div class="setting-row"><span>Drag offset</span><input type="range" id="rng-offset" min="40" max="96" step="4"></div>
+    <div class="setting-row"><span>Digger name</span><button id="btn-name-change" class="btn-secondary" style="padding:8px 16px">CHANGE</button></div>
     <div class="stack">
       <button id="btn-settings-close" class="cta">DONE</button>
     </div>
@@ -309,7 +321,8 @@ canvas { -webkit-user-drag: none; user-drag: none; }
     <div id="lb-content" class="hidden">
       <div class="lb-big" id="lb-percentile">—</div>
       <p class="muted" id="lb-players" style="font-size:14px"></p>
-      <p class="muted" id="lb-score" style="font-size:14px;margin-top:6px"></p>
+      <div id="lb-top10" style="margin-top:12px"></div>
+      <p class="muted" id="lb-score" style="font-size:14px;margin-top:10px"></p>
       <p class="muted" style="font-size:12px;margin-top:12px" id="lb-note"></p>
     </div>
     <div class="stack"><button id="btn-lb-close" class="cta">CLOSE</button></div>
@@ -327,6 +340,21 @@ canvas { -webkit-user-drag: none; user-drag: none; }
   </div>
 </div>
 
+<div id="ov-name" class="overlay hidden">
+  <div class="panel">
+    <h2>⛏️ Name your digger</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:12px">This is how you'll appear on the world leaderboard. No account, no password — just a name.</p>
+    <div style="display:flex;gap:8px;align-items:stretch">
+      <input id="name-input" maxlength="16" autocomplete="off" spellcheck="false">
+      <button id="btn-name-dice" class="icon-btn" aria-label="Random name" style="width:48px;height:auto">🎲</button>
+    </div>
+    <div class="stack">
+      <button id="btn-name-save" class="cta">SAVE NAME</button>
+      <button id="btn-name-skip" class="btn-secondary">LATER</button>
+    </div>
+  </div>
+</div>
+
 <div id="ov-tutorial" class="overlay hidden">
   <div class="panel">
     <h2>How to dig</h2>
@@ -339,7 +367,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
 
 <div id="toast" class="hidden"></div>
 
-<script src="src/config.js?v=11"></script>
-<script type="module" src="src/main.js?v=11"></script>
+<script src="src/config.js?v=12"></script>
+<script type="module" src="src/main.js?v=12"></script>
 </body>
 </html>

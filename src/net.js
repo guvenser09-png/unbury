@@ -56,6 +56,11 @@ export async function submitRun(dateStr, moves, score, revealPctVal, durationMs)
   }, 15000);
 }
 
+// → { name } or { error } — sets the public digger name
+export async function setName(name) {
+  return call('fl-set-name', { name });
+}
+
 // Queue for offline submissions, flushed on reconnect / next boot.
 export function queueSubmission(payload) {
   const q = JSON.parse(localStorage.getItem('fl_queue') || '[]');
