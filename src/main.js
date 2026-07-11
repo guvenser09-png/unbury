@@ -4,6 +4,8 @@ import { BoardRenderer, drawPieceSprite } from './render.js';
 import * as SFX from './audio.js';
 import * as Share from './share.js';
 import * as Net from './net.js';
+import { initAds } from './ads.js';
+import * as Notify from './notify.js';
 
 const $ = id => document.getElementById(id);
 const cfg = window.FL_CONFIG || {};
@@ -48,6 +50,7 @@ async function boot() {
       keys.forEach(k => localStorage.removeItem(k));
     }
   }
+  initAds();
   $('boot-bar').style.width = '30%';
   try {
     const res = await fetch('src/data/images.json');
@@ -111,6 +114,8 @@ async function boot() {
   });
 
   bindUI();
+  // refresh the 7-evening reminder plan; skips today once it's played
+  Notify.reschedule({ playedToday: !!dailyRecord(), streak: app.streak.count });
   $('boot-bar').style.width = '100%';
   setTimeout(() => {
     renderHome();
@@ -855,9 +860,16 @@ function showResultPanel({ percentile, rank, players, submittedNow }) {
   $('btn-see-board').style.display = app.mode === 'daily' ? '' : 'none';
   $('btn-again').textContent = endless ? 'PLAY AGAIN' : 'PRACTICE AGAIN';
 
-  // first counted score just landed on the world board — let them claim a name
-  if (app.mode === 'daily' && submittedNow && Net.isOnlineMode() && !localStorage.getItem('fl_name_prompted')) {
-    setTimeout(openNamePrompt, 1600);
+  // first counted score just landed on the world board — let them claim a name;
+  // the reminder ask waits for the run AFTER that (one question per day, max)
+  if (app.mode === 'daily' && submittedNow) {
+    Notify.reschedule({ playedToday: true, streak: app.streak.count });
+    if (Net.isOnlineMode() && !localStorage.getItem('fl_name_prompted')) {
+      setTimeout(openNamePrompt, 1600);
+    } else if (Notify.available() && !Notify.enabled() && !localStorage.getItem('fl_notify_asked')) {
+      localStorage.setItem('fl_notify_asked', '1');
+      setTimeout(() => $('ov-notify').classList.remove('hidden'), 1600);
+    }
   }
 }
 
@@ -1113,6 +1125,25 @@ function bindUI() {
     localStorage.setItem('fl_name_prompted', '1');
     $('ov-name').classList.add('hidden');
   });
+
+  $('btn-notify-yes').addEventListener('click', async () => {
+    $('ov-notify').classList.add('hidden');
+    const ok = await Notify.enable({ playedToday: !!dailyRecord(), streak: app.streak.count });
+    toast(ok ? '⛏️ Reminders on — see you tomorrow evening'
+             : 'Couldn’t enable — allow notifications in iOS Settings');
+    syncSettingsUI();
+  });
+  $('btn-notify-no').addEventListener('click', () => $('ov-notify').classList.add('hidden'));
+  $('tog-notify').addEventListener('click', async () => {
+    if (Notify.enabled()) {
+      await Notify.disable();
+      toast('Daily reminder off');
+    } else {
+      const ok = await Notify.enable({ playedToday: !!dailyRecord(), streak: app.streak.count });
+      toast(ok ? '⛏️ Daily reminder on' : 'Allow notifications in iOS Settings first');
+    }
+    syncSettingsUI();
+  });
   $('btn-name-change').addEventListener('click', () => { $('ov-settings').classList.add('hidden'); openNamePrompt(); });
   $('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') saveName(); });
   $('btn-streak').addEventListener('click', () => {
@@ -1172,6 +1203,8 @@ function syncSettingsUI() {
   $('tog-haptics').classList.toggle('on', settings.haptics);
   $('tog-shake').classList.toggle('on', settings.shake);
   $('tog-motion').classList.toggle('on', settings.reducedMotion);
+  $('row-notify').classList.toggle('hidden', !Notify.available());
+  $('tog-notify').classList.toggle('on', Notify.enabled());
   $('rng-offset').value = settings.dragOffset;
   const dk = localStorage.getItem('fl_device_key') || '';
   $('device-hash').textContent = dk ? 'device ' + dk.slice(0, 8) : '';

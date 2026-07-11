@@ -336,6 +336,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
     <div class="setting-row"><span>Reduced motion</span><button class="toggle" id="tog-motion" aria-label="Reduced motion"></button></div>
     <div class="setting-row"><span>Drag offset</span><input type="range" id="rng-offset" min="40" max="96" step="4"></div>
     <div class="setting-row"><span>Digger name</span><button id="btn-name-change" class="btn-secondary" style="padding:8px 16px">CHANGE</button></div>
+    <div class="setting-row hidden" id="row-notify"><span>Daily reminder</span><button class="toggle" id="tog-notify" aria-label="Daily reminder"></button></div>
     <div class="stack">
       <button id="btn-settings-close" class="cta">DONE</button>
     </div>
@@ -382,6 +383,17 @@ canvas { -webkit-user-drag: none; user-drag: none; }
   </div>
 </div>
 
+<div id="ov-notify" class="overlay hidden">
+  <div class="panel">
+    <h2>⛏️ Never miss a dig?</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:6px">One quiet reminder each evening — only if you haven’t dug yet. Your streak will thank you.</p>
+    <div class="stack">
+      <button id="btn-notify-yes" class="cta">REMIND ME</button>
+      <button id="btn-notify-no" class="btn-secondary">NO THANKS</button>
+    </div>
+  </div>
+</div>
+
 <div id="ov-name" class="overlay hidden">
   <div class="panel">
     <h2>⛏️ Name your digger</h2>
@@ -409,7 +421,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
 
 <div id="toast" class="hidden"></div>
 
-<script src="src/config.js?v=23"></script>
-<script type="module" src="src/main.js?v=23"></script>
+<script src="src/config.js?v=25"></script>
+<script type="module" src="src/main.js?v=25"></script>
 </body>
 </html>
