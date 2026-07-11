@@ -73,15 +73,28 @@ export function queueSubmission(payload) {
   localStorage.setItem('fl_queue', JSON.stringify(q.slice(-5)));
 }
 
+let flushing = false;
 export async function flushQueue(onResult) {
-  if (!cfg.enabled) return;
-  const q = JSON.parse(localStorage.getItem('fl_queue') || '[]');
-  if (q.length === 0) return;
-  const remaining = [];
-  for (const item of q) {
-    const res = await submitRun(item.dateStr, item.moves, item.score, item.revealPctVal, item.durationMs);
-    if (!res || res.error) remaining.push(item);
-    else if (onResult) onResult(item, res);
+  if (!cfg.enabled || flushing) return;
+  flushing = true;
+  try {
+    let q;
+    try { q = JSON.parse(localStorage.getItem('fl_queue') || '[]'); } catch { q = []; }
+    if (q.length === 0) return;
+    const remaining = [];
+    const cutoff = Date.now() - 3 * 86400000;
+    for (const item of q) {
+      if (Date.parse(item.dateStr + 'T00:00:00Z') < cutoff) continue; // server won't accept it anyway
+      const res = await submitRun(item.dateStr, item.moves, item.score, item.revealPctVal, item.durationMs);
+      if (!res || (res.error && /timeout|fetch|network/i.test(String(res.error)))) {
+        remaining.push(item); // transient — retry later
+      } else if (!res.error && onResult) {
+        onResult(item, res);
+      }
+      // validation errors (replay rejected etc.) are permanent: drop, never loop
+    }
+    localStorage.setItem('fl_queue', JSON.stringify(remaining));
+  } finally {
+    flushing = false;
   }
-  localStorage.setItem('fl_queue', JSON.stringify(remaining));
 }

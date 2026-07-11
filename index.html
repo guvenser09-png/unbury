@@ -28,7 +28,7 @@ body {
   overflow: hidden;
 }
 #app {
-  max-width: 430px; height: 100dvh; margin: 0 auto;
+  max-width: 430px; height: 100vh; height: 100dvh; margin: 0 auto;
   display: flex; flex-direction: column;
   padding: calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 12px);
   position: relative;
@@ -189,7 +189,8 @@ input[type=range] { width: 130px; accent-color: var(--accent); }
 
 #toast { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 24px); left: 50%; transform: translateX(-50%);
   background: var(--surface); color: var(--text-hi); font-size: 14px; font-weight: 700; padding: 11px 20px;
-  border-radius: 999px; z-index: 120; box-shadow: 0 6px 18px rgba(0,0,0,.4); white-space: nowrap;
+  border-radius: 20px; z-index: 120; box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  max-width: calc(100vw - 32px); white-space: normal; text-align: center;
   pointer-events: none; }
 canvas { -webkit-user-drag: none; user-drag: none; }
 
@@ -241,7 +242,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
     <div class="board-wrap"><canvas id="board"></canvas></div>
     <div id="guess-slot"><button id="btn-guess" class="guess-chip hidden">🔍 I KNOW WHAT IT IS</button></div>
     <div class="tray-row">
-      <button id="btn-reroll" class="reroll">🔄 <span>Reroll</span> <span id="reroll-badge">FREE ×1</span></button>
+      <button id="btn-reroll" class="reroll">🔄 <span>Reroll</span> <span id="reroll-badge">×1</span></button>
       <div class="tray">
         <div class="slot" data-slot="0"><canvas></canvas></div>
         <div class="slot" data-slot="1"><canvas></canvas></div>
@@ -288,7 +289,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
       <h2>💣 Clear any 3×3 and keep going?</h2>
       <p class="muted" style="font-size:14px">One per run. Everyone gets the same offer — it's fair.</p>
       <div class="stack">
-        <button id="btn-bomb-yes" class="cta">▶ WATCH A SHORT AD</button>
+        <button id="btn-bomb-yes" class="cta">💣 CLEAR 3×3 &amp; CONTINUE</button>
         <button id="btn-bomb-no" class="btn-secondary">NO THANKS, I'M DONE</button>
       </div>
     </div>
@@ -408,7 +409,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
 
 <div id="toast" class="hidden"></div>
 
-<script src="src/config.js?v=21"></script>
-<script type="module" src="src/main.js?v=21"></script>
+<script src="src/config.js?v=23"></script>
+<script type="module" src="src/main.js?v=23"></script>
 </body>
 </html>

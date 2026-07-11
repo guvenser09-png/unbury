@@ -1,14 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
+  <defs>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD97A"/>
+      <stop offset="1" stop-color="#FF9D3D"/>
+    </linearGradient>
+    <clipPath id="cc">
+      <polygon points="1400,1030 1330,1180 1372,1300 1310,1440 1366,1580 1300,1750 1470,1750 1420,1580 1450,1440 1436,1300 1450,1180 1520,1030"/>
+    </clipPath>
+  </defs>
   <rect width="2732" height="2732" fill="#0E1116"/>
-  <g transform="translate(1126,1126)">
-    <clipPath id="rsq2"><rect width="480" height="480" rx="106"/></clipPath>
-    <g clip-path="url(#rsq2)">
-      <polygon points="0,0 282,0 228,162 282,306 198,480 0,480" fill="#4C9AFF"/>
-      <polygon points="282,0 480,0 480,480 198,480 282,306 228,162" fill="#A78BFA"/>
-      <polyline points="282,-12 228,162 282,306 198,492" fill="none" stroke="#0E1116" stroke-width="34" stroke-linejoin="round"/>
-      <polyline points="282,-12 228,162 282,306 198,492" fill="none" stroke="#FFB020" stroke-width="11" stroke-linejoin="round"/>
-    </g>
-    <circle cx="255" cy="234" r="10" fill="#FFE9B8"/>
+  <g clip-path="url(#cc)">
+    <rect x="1240" y="1030" width="360" height="720" fill="#05070B"/>
+    <rect x="1330" y="1080" width="62" height="62" fill="#F25C54"/>
+    <rect x="1398" y="1080" width="62" height="62" fill="#FFC145"/>
+    <rect x="1330" y="1148" width="62" height="62" fill="#4C9AFF"/>
+    <rect x="1398" y="1148" width="62" height="62" fill="#2DD4BF"/>
+    <rect x="1364" y="1216" width="62" height="62" fill="#A78BFA"/>
+    <rect x="1330" y="1284" width="62" height="62" fill="#FFC145"/>
+    <rect x="1398" y="1284" width="62" height="62" fill="#F472B6"/>
+    <rect x="1330" y="1352" width="62" height="62" fill="#2DD4BF"/>
+    <rect x="1398" y="1352" width="62" height="62" fill="#F25C54"/>
+    <rect x="1364" y="1420" width="62" height="62" fill="#4C9AFF"/>
+    <rect x="1330" y="1488" width="62" height="62" fill="#FFC145"/>
+    <rect x="1398" y="1488" width="62" height="62" fill="#A78BFA"/>
+    <rect x="1330" y="1556" width="62" height="62" fill="#F472B6"/>
+    <rect x="1398" y="1556" width="62" height="62" fill="#2DD4BF"/>
+    <rect x="1364" y="1624" width="62" height="62" fill="#FFC145"/>
   </g>
-  <text x="1366" y="1760" text-anchor="middle" font-family="Helvetica-Bold, Helvetica, Arial" font-size="96" font-weight="800" letter-spacing="6" fill="#F2F5F9">UNBURY</text>
+  <polyline points="1400,1030 1330,1180 1372,1300 1310,1440 1366,1580 1300,1750" fill="none"
+    stroke="url(#glow)" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline points="1520,1030 1450,1180 1436,1300 1450,1440 1420,1580 1470,1750" fill="none"
+    stroke="url(#glow)" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="1372" cy="1300" r="12" fill="#FFF3C4"/>
+  <text x="1366" y="1930" text-anchor="middle" font-family="Helvetica-Bold, Helvetica, Arial" font-size="104" font-weight="800" letter-spacing="8" fill="#F2F5F9">UNBURY</text>
+  <text x="1366" y="2000" text-anchor="middle" font-family="Helvetica, Arial" font-size="44" letter-spacing="3" fill="#98A5B3">the daily dig</text>
 </svg>

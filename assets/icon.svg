@@ -1,20 +1,80 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" fill="#141924"/>
-  <g transform="translate(112,112)">
-    <clipPath id="rsq"><rect width="800" height="800" rx="176"/></clipPath>
-    <g clip-path="url(#rsq)">
-      <polygon points="0,0 470,0 380,270 470,510 330,800 0,800" fill="#4C9AFF"/>
-      <polygon points="470,0 800,0 800,800 330,800 470,510 380,270" fill="#A78BFA"/>
-      <g stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="8">
-        <line x1="0" y1="400" x2="800" y2="400"/>
-        <line x1="200" y1="0" x2="200" y2="800"/>
-        <line x1="620" y1="0" x2="620" y2="800"/>
-        <line x1="0" y1="200" x2="800" y2="200"/>
-        <line x1="0" y1="620" x2="800" y2="620"/>
-      </g>
-      <polyline points="470,-20 380,270 470,510 330,820" fill="none" stroke="#0E1116" stroke-width="56" stroke-linejoin="round"/>
-      <polyline points="470,-20 380,270 470,510 330,820" fill="none" stroke="#FFB020" stroke-width="18" stroke-linejoin="round"/>
-    </g>
-    <circle cx="425" cy="390" r="16" fill="#FFE9B8"/>
+  <defs>
+    <linearGradient id="rockL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1C2430"/>
+      <stop offset="0.45" stop-color="#161D27"/>
+      <stop offset="1" stop-color="#0E141C"/>
+    </linearGradient>
+    <linearGradient id="rockR" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#232C3A"/>
+      <stop offset="0.5" stop-color="#1A222D"/>
+      <stop offset="1" stop-color="#111820"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD97A"/>
+      <stop offset="1" stop-color="#FF9D3D"/>
+    </linearGradient>
+    <clipPath id="crackClip">
+      <polygon points="600,-40 500,180 560,360 470,560 550,760 440,1064 700,1064 660,760 700,560 680,360 700,180 800,-40"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#rockL)"/>
+
+  <g opacity="0.5">
+    <rect x="0" y="250" width="1024" height="10" fill="#0A0F15"/>
+    <rect x="0" y="520" width="1024" height="12" fill="#0A0F15"/>
+    <rect x="0" y="790" width="1024" height="10" fill="#0A0F15"/>
   </g>
+
+  <polygon points="620,-40 520,180 610,360 490,560 590,760 460,1064 1064,1064 1064,-40" fill="url(#rockR)"/>
+
+  <g clip-path="url(#crackClip)">
+    <rect x="380" y="-40" width="420" height="1144" fill="#05070B"/>
+    <g>
+      <rect x="500" y="60" width="88" height="88" fill="#F25C54"/>
+      <rect x="596" y="60" width="88" height="88" fill="#FFC145"/>
+      <rect x="500" y="156" width="88" height="88" fill="#4C9AFF"/>
+      <rect x="596" y="156" width="88" height="88" fill="#2DD4BF"/>
+      <rect x="452" y="252" width="88" height="88" fill="#FFC145"/>
+      <rect x="548" y="252" width="88" height="88" fill="#A78BFA"/>
+      <rect x="500" y="348" width="88" height="88" fill="#2DD4BF"/>
+      <rect x="596" y="348" width="88" height="88" fill="#F25C54"/>
+      <rect x="452" y="444" width="88" height="88" fill="#F472B6"/>
+      <rect x="548" y="444" width="88" height="88" fill="#FFC145"/>
+      <rect x="452" y="540" width="88" height="88" fill="#4C9AFF"/>
+      <rect x="548" y="540" width="88" height="88" fill="#2DD4BF"/>
+      <rect x="500" y="636" width="88" height="88" fill="#FFC145"/>
+      <rect x="596" y="636" width="88" height="88" fill="#A78BFA"/>
+      <rect x="452" y="732" width="88" height="88" fill="#F25C54"/>
+      <rect x="548" y="732" width="88" height="88" fill="#4C9AFF"/>
+      <rect x="452" y="828" width="88" height="88" fill="#2DD4BF"/>
+      <rect x="548" y="828" width="88" height="88" fill="#FFC145"/>
+      <rect x="500" y="924" width="88" height="88" fill="#A78BFA"/>
+      <rect x="596" y="924" width="88" height="88" fill="#F472B6"/>
+    </g>
+    <rect x="380" y="-40" width="420" height="1144" fill="#05070B" opacity="0.25"/>
+  </g>
+
+  <polyline points="600,-40 500,180 560,360 470,560 550,760 440,1064" fill="none"
+    stroke="url(#glow)" stroke-width="26" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline points="800,-40 700,180 680,360 700,560 660,760 700,1064" fill="none"
+    stroke="url(#glow)" stroke-width="26" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline points="600,-40 500,180 560,360 470,560 550,760 440,1064" fill="none"
+    stroke="#FFF3C4" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+  <polyline points="800,-40 700,180 680,360 700,560 660,760 700,1064" fill="none"
+    stroke="#FFF3C4" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+
+  <g stroke="#2E3945" stroke-width="9" stroke-linecap="round" opacity="0.85">
+    <polyline points="500,180 400,230 340,210" fill="none"/>
+    <polyline points="470,560 380,610" fill="none"/>
+    <polyline points="700,180 800,140" fill="none"/>
+    <polyline points="700,560 800,600 850,580" fill="none"/>
+    <polyline points="610,760 720,830" fill="none"/>
+  </g>
+
+  <circle cx="620" cy="362" r="22" fill="#FFF3C4"/>
+  <circle cx="620" cy="362" r="44" fill="#FFE9B8" opacity="0.25"/>
+  <circle cx="806" cy="196" r="9" fill="#FFE9B8" opacity="0.8"/>
+  <circle cx="352" cy="700" r="7" fill="#FFE9B8" opacity="0.6"/>
 </svg>

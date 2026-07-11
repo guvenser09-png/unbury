@@ -131,9 +131,31 @@ export function shareText({ faultNo, revealPctVal, rankText, guessedAt, streak, 
   return `${parts.join(' · ')}\n${bar} ${score.toLocaleString('en-US')} pts\nSame pieces. Same board. Beat me:\n${url}`;
 }
 
+function capPlugins() {
+  const c = window.Capacitor;
+  return c && c.isNativePlatform && c.isNativePlatform() ? c.Plugins : null;
+}
+
 export async function shareCard(canvas, text, url) {
+  // Native app: write the PNG to cache and hand it to the OS share sheet —
+  // the only reliable file-share path inside WKWebView.
+  const plugins = capPlugins();
+  if (plugins && plugins.Filesystem && plugins.Share) {
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      const write = await plugins.Filesystem.writeFile({
+        path: 'unbury-share.png',
+        data: dataUrl.split(',')[1],
+        directory: 'CACHE',
+      });
+      await plugins.Share.share({ text, files: [write.uri] });
+      return 'shared';
+    } catch (e) {
+      if (e && /cancel/i.test(String(e.message || e))) return 'cancelled';
+    }
+  }
   const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-  const file = blob ? new File([blob], 'fault-lines.png', { type: 'image/png' }) : null;
+  const file = blob ? new File([blob], 'unbury.png', { type: 'image/png' }) : null;
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file], text });
@@ -150,9 +172,13 @@ export async function shareCard(canvas, text, url) {
 }
 
 export async function copyImage(canvas) {
+  // ClipboardItem must be constructed synchronously within the user gesture;
+  // passing a promise keeps WebKit's activation window open.
   try {
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    const item = new ClipboardItem({
+      'image/png': new Promise(res => canvas.toBlob(res, 'image/png')),
+    });
+    await navigator.clipboard.write([item]);
     return true;
   } catch { return false; }
 }

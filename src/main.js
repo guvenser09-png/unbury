@@ -75,7 +75,12 @@ async function boot() {
         rec.players = res.players != null ? res.players : null;
         save('fl_daily', rec);
       }
-      toast(`Synced! ${rankLabel(res.rank, res.players, res.percentile) || 'Score verified'}`);
+      const label = rankLabel(res.rank, res.players, res.percentile);
+      // if the result panel is still open, replace the stuck "Syncing…" chip
+      if (!$('ov-gameover').classList.contains('hidden') && label) {
+        $('go-percentile').textContent = `🏆 ${label}`;
+      }
+      toast(`Synced! ${label || 'Score verified'}`);
       renderHome();
     }
   };
@@ -130,13 +135,17 @@ function show(id) {
 }
 
 function dailyRecord() {
-  const rec = JSON.parse(localStorage.getItem('fl_daily') || 'null');
-  return rec && rec.date === app.dateStr ? rec : null;
+  try {
+    const rec = JSON.parse(localStorage.getItem('fl_daily') || 'null');
+    return rec && rec.date === app.dateStr ? rec : null;
+  } catch { return null; }
 }
 
 function attemptRecord() {
-  const rec = JSON.parse(localStorage.getItem('fl_attempt') || 'null');
-  return rec && rec.date === app.dateStr ? rec : null;
+  try {
+    const rec = JSON.parse(localStorage.getItem('fl_attempt') || 'null');
+    return rec && rec.date === app.dateStr ? rec : null;
+  } catch { return null; }
 }
 
 function renderHome() {
@@ -319,7 +328,11 @@ function updateRerollBtn() {
   const g = app.game;
   const btn = $('btn-reroll');
   btn.style.opacity = g.rerollUsed || g.over ? '.35' : '1';
-  $('reroll-badge').textContent = localStorage.getItem('fl_reroll_taught') ? '▶ ×1' : 'FREE ×1';
+  // ad wording only where an ad SDK actually exists (portal builds)
+  const hasAds = !!(window.FL_SDK && window.FL_SDK.requestRewarded);
+  $('reroll-badge').textContent = hasAds
+    ? (localStorage.getItem('fl_reroll_taught') ? '▶ ×1' : 'FREE ×1')
+    : '×1';
 }
 
 function renderTray() {
@@ -346,8 +359,10 @@ function renderTray() {
   });
 }
 
-function autosave() {
-  if (app.counted && !app.game.over) {
+function autosave(force) {
+  // the fatal move is persisted too (force) — otherwise force-quitting on the
+  // game-over screen would replay into a free undo of the losing placement
+  if (app.counted && (!app.game.over || force)) {
     save('fl_attempt', { date: app.dateStr, moves: app.game.moves });
   }
 }
@@ -526,7 +541,7 @@ function handleMoveEvent(ev) {
   updateHUD();
   renderTray();
   updateRerollBtn();
-  autosave();
+  autosave(ev.gameOver);
   if (ev.gameOver) setTimeout(() => gameOverFlow(), 650);
 }
 
@@ -576,6 +591,7 @@ function openGuess() {
 
 function doGuess(pick) {
   $('ov-guess').classList.add('hidden');
+  if (!app.game || app.game.guessUsed) return; // double-tap on two options
   const ev = E.applyMove(app.game, { t: 'g', pick });
   if (ev.error) { toast(ev.error); return; }
   const now = performance.now();
@@ -647,26 +663,27 @@ async function saveName() {
 
 async function adFlow() {
   // Portal SDK adapter: window.FL_SDK.requestRewarded resolves true when the ad
-  // completes. Without a portal (self-host/dev) the reward is granted free —
-  // the no-fill fallback rule: never show a dead button.
+  // completes. Without a portal (native app/self-host) these perks are simply
+  // free features — no ad language is shown anywhere in that case.
   if (window.FL_SDK && window.FL_SDK.requestRewarded) {
     try { return await window.FL_SDK.requestRewarded(); }
     catch { toast('On the house 🎁'); return true; }
   }
-  toast('On the house 🎁');
   return true;
 }
 
 // ---------- game over ----------
 
 async function gameOverFlow() {
-  if (!app.game.over) return;
+  const g = app.game;
+  if (!g || !g.over) return;
   SFX.gameOver();
   renderer.gameOverCrack = performance.now();
   $('board').classList.add('dimmed');
   await sleep(1100);
+  if (app.game !== g) return; // player left for home/another run mid-pause
 
-  if (!app.game.bombUsed && app.mode !== 'endless') {
+  if (!g.bombUsed && app.mode !== 'endless') {
     $('ov-gameover').classList.remove('hidden');
     $('go-step-bomb').classList.remove('hidden');
     $('go-step-result').classList.add('hidden');
@@ -711,6 +728,7 @@ function bombTap(e) {
 
 async function finalizeRun() {
   const g = app.game;
+  if (!g || !g.over) return; // never finalize a game that isn't actually over
   if (!g.ended) E.applyMove(g, { t: 'end' });
   const durationMs = Date.now() - app.runStart;
   const pct = E.revealPct(g);
@@ -876,7 +894,7 @@ function openShare() {
     rankText: rankLabel(rec.rank, rec.players, rec.percentile),
     guessedAt: rec.guessedAt != null ? rec.guessedAt : null,
     streak: app.streak.count,
-    url: `${cfg.shareUrl || 'unbury.game'}/d/${app.faultNo}`,
+    url: cfg.shareUrl || 'guvenser09-png.github.io/unbury',
   });
   $('share-preview').src = shareCanvas.toDataURL('image/png');
   $('ov-share').classList.remove('hidden');
@@ -889,7 +907,7 @@ function currentShareText() {
     rankText: rankLabel(rec.rank, rec.players, rec.percentile),
     guessedAt: rec.guessedAt != null ? rec.guessedAt : null,
     streak: app.streak.count, score: rec.score,
-    url: `https://${cfg.shareUrl || 'unbury.game'}/d/${app.faultNo}`,
+    url: `https://${cfg.shareUrl || 'guvenser09-png.github.io/unbury'}/`,
   });
 }
 
@@ -964,7 +982,7 @@ function openLeaderboard() {
 
     $('lb-note').textContent = Net.isOnlineMode()
       ? 'Every score is verified by replaying the moves on the server — provably fair.'
-      : 'Offline build — connect a backend to compare with the world.';
+      : 'Scores sync when you’re back online.';
   }
 }
 
@@ -985,7 +1003,7 @@ function bindUI() {
   });
 
   $('btn-pause').addEventListener('click', () => {
-    if (app.bombMode) return;
+    if (app.bombMode || !app.game || app.game.over) return;
     app.paused = true;
     $('btn-endrun').textContent = app.mode === 'daily' ? 'END RUN' : 'RESTART';
     $('ov-pause').classList.remove('hidden');
@@ -1040,6 +1058,9 @@ function bindUI() {
 
   $('btn-bomb-yes').addEventListener('click', bombAccept);
   $('btn-bomb-no').addEventListener('click', bombDecline);
+  if (window.FL_SDK && window.FL_SDK.requestRewarded) {
+    $('btn-bomb-yes').textContent = '▶ WATCH A SHORT AD';
+  }
 
   $('btn-share').addEventListener('click', () => { $('ov-gameover').classList.add('hidden'); openShare(); });
   $('btn-share-home').addEventListener('click', openShare);
@@ -1050,6 +1071,8 @@ function bindUI() {
   });
   $('btn-go-home').addEventListener('click', () => {
     $('ov-gameover').classList.add('hidden');
+    $('ov-pause').classList.add('hidden');
+    app.paused = false;
     renderer.stop();
     app.game = null;
     lastMilestone = 0;
@@ -1057,10 +1080,19 @@ function bindUI() {
     show('s-home');
   });
 
+  let shareBusy = false;
   $('btn-share-native').addEventListener('click', async () => {
-    const res = await Share.shareCard(shareCanvas, currentShareText());
-    if (res === null) toast('Sharing unavailable — try copy or download');
+    if (shareBusy) return;
+    shareBusy = true;
+    try {
+      const res = await Share.shareCard(shareCanvas, currentShareText());
+      if (res === null) toast('Sharing unavailable — try copy or download');
+    } finally { shareBusy = false; }
   });
+  // WKWebView has no download manager — hide DOWNLOAD in the native app
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    $('btn-download').style.display = 'none';
+  }
   $('btn-copy-img').addEventListener('click', async () => {
     toast(await Share.copyImage(shareCanvas) ? 'Image copied' : 'Copy failed — try download');
   });

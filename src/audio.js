@@ -16,7 +16,7 @@ function ensure() {
     master.connect(comp);
     comp.connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state !== 'running') ctx.resume(); // also recovers iOS 'interrupted' state
   return ctx;
 }
 
