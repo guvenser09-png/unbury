@@ -20,7 +20,10 @@ workflows:
       - name: Build web bundle
         script: bash scripts/build-www.sh
       - name: Sync Capacitor iOS
-        script: npx cap sync ios
+        script: |
+          npx cap sync ios
+          find ios/App -name '.DS_Store' -delete
+          find ios/App -name '._*' -delete
       - name: Fetch signing files (creates bundle id + profile if missing)
         script: |
           echo "$CERTIFICATE_PRIVATE_KEY" | base64 --decode > /tmp/cert_key
@@ -32,6 +35,8 @@ workflows:
         script: |
           keychain initialize
           keychain add-certificates
+          echo "--- signing identities in keychain ---"
+          security find-identity -v -p codesigning || true
       - name: Set incremented build number
         script: |
           cd ios/App
