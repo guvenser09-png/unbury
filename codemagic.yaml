@@ -10,11 +10,10 @@ workflows:
         - appstore_credentials
       vars:
         BUNDLE_ID: "com.unbury.app"
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
       node: 22.14.0
       xcode: latest
-      cocoapods: default
     scripts:
       - name: Install dependencies
         script: npm ci
@@ -38,7 +37,7 @@ workflows:
       - name: Build IPA
         script: |
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
+            --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
