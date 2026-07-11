@@ -32,6 +32,13 @@ workflows:
         script: |
           keychain initialize
           keychain add-certificates
+      - name: Set incremented build number
+        script: |
+          cd ios/App
+          LATEST=$(app-store-connect get-latest-build-number 6789700779 2>/dev/null | tail -1 | tr -dc '0-9')
+          if [ -z "$LATEST" ]; then NEXT="$BUILD_NUMBER"; else NEXT=$((LATEST + 1)); fi
+          echo "Uploading as build number: $NEXT"
+          agvtool new-version -all "$NEXT"
       - name: Apply provisioning profiles
         script: xcode-project use-profiles
       - name: Build IPA
