@@ -6,6 +6,8 @@ workflows:
     integrations:
       app_store_connect: unbury-asc
     environment:
+      groups:
+        - appstore_credentials
       vars:
         BUNDLE_ID: "com.unbury.app"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
@@ -24,6 +26,7 @@ workflows:
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
             --create
       - name: Set up keychain and certificates
         script: |
