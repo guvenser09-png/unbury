@@ -103,6 +103,8 @@ async function boot() {
   Net.getEndless().then(res => {
     if (res && !res.error) { app.endless = res; renderHome(); }
   });
+  syncEndless(null); // retry a stranded league run from a previous session
+  window.addEventListener('online', () => syncEndless(null));
   Net.getDaily(app.dateStr).then(info => {
     if (info && !info.error) {
       app.server = info;
@@ -559,6 +561,20 @@ function cancelDrag() {
   renderTray();
 }
 
+// The engine caps runs at MAX_MOVES. Finish the run one move early (room for
+// the closing 'end' move) instead of letting the board silently refuse input.
+function capGuard() {
+  const g = app.game;
+  if (!g || g.over || g.ended) return false;
+  if (g.moves.length >= E.MAX_MOVES - 1) {
+    g.over = true;
+    toast('⛏️ 400 moves — the vault is full! Banking your run.');
+    setTimeout(() => gameOverFlow(), 600);
+    return true;
+  }
+  return false;
+}
+
 function handleMoveEvent(ev) {
   const now = performance.now();
   renderer.playPlacement(ev, now);
@@ -576,6 +592,7 @@ function handleMoveEvent(ev) {
   updateRerollBtn();
   autosave(ev.gameOver);
   if (ev.gameOver) setTimeout(() => gameOverFlow(), 650);
+  else capGuard();
 }
 
 let lastMilestone = 0;
@@ -719,7 +736,8 @@ async function gameOverFlow() {
   await sleep(1100);
   if (app.game !== g) return; // player left for home/another run mid-pause
 
-  if (!g.bombUsed && app.mode !== 'endless') {
+  // no bomb offer at the move cap — there'd be no room left to close the run
+  if (!g.bombUsed && app.mode !== 'endless' && g.moves.length < E.MAX_MOVES - 1) {
     $('ov-gameover').classList.remove('hidden');
     $('go-step-bomb').classList.remove('hidden');
     $('go-step-result').classList.add('hidden');
@@ -760,7 +778,7 @@ function bombTap(e) {
   renderTray();
   autosave();
   if (ev.gameOver) setTimeout(() => gameOverFlow(), 700);
-  else toast('Back in business');
+  else if (!capGuard()) toast('Back in business');
 }
 
 async function finalizeRun() {
@@ -775,21 +793,19 @@ async function finalizeRun() {
 
   let percentile = null, rank = null, players = null;
   let submittedNow = false;
-  let endlessRes = null;
+  let endlessSync = false;
 
   if (app.mode === 'endless') {
     if (g.score > app.endlessBest) {
       app.endlessBest = g.score;
       localStorage.setItem('fl_endless_best', String(g.score));
     }
-    // every finished run enters the weekly league; the server keeps the best
+    // the panel must open instantly: queue the run, sync in the background,
+    // and patch the rank chip in place when the server answers
     if (Net.isOnlineMode() && g.score > 0) {
-      const res = await Net.submitEndless(app.runSeed, g.moves, g.score, durationMs);
-      if (res && !res.error && res.verified) {
-        endlessRes = res;
-        app.endless = res;
-        renderHome();
-      }
+      queueEndless({ seed: app.runSeed, moves: g.moves, score: g.score, durationMs, savedAt: Date.now() });
+      endlessSync = true;
+      syncEndless(g);
     }
   } else if (app.counted) {
     localStorage.removeItem('fl_attempt');
@@ -832,15 +848,69 @@ async function finalizeRun() {
     if (g.score > best) localStorage.setItem('fl_practice_best_' + app.dateStr, String(g.score));
   }
 
-  showResultPanel({ percentile, rank, players, submittedNow, endlessRes });
+  showResultPanel({ percentile, rank, players, submittedNow, endlessSync });
 }
 
 // "resets in 3d 14h" — from the league's resetsAt timestamp
 function resetLabel(resetsAt) {
   const ms = Date.parse(resetsAt) - Date.now();
-  if (!(ms > 0)) return '';
+  if (!(ms > 0)) return 'new week — fresh board';
   const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000);
-  return d > 0 ? `resets in ${d}d ${h}h` : `resets in ${h}h`;
+  if (d > 0) return `resets in ${d}d ${h}h`;
+  return h > 0 ? `resets in ${h}h` : 'resets in <1h';
+}
+
+// Monday-00:00-UTC week key — must mirror the server's weekInfo()
+function weekKeyOf(t) {
+  const d = new Date(t);
+  const dayMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return new Date(dayMs - ((new Date(dayMs).getUTCDay() + 6) % 7) * 86400000).toISOString().slice(0, 10);
+}
+
+// Best unsubmitted endless run of the week survives reloads and flaky networks.
+function queueEndless(p) {
+  let cur = null;
+  try { cur = JSON.parse(localStorage.getItem('fl_endless_pending') || 'null'); } catch { /* corrupt — replace */ }
+  if (!cur || p.score > cur.score) localStorage.setItem('fl_endless_pending', JSON.stringify(p));
+}
+
+let endlessSyncing = false;
+async function syncEndless(gameRef) {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem('fl_endless_pending') || 'null'); } catch { /* corrupt */ }
+  if (!p || endlessSyncing) return;
+  if (weekKeyOf(p.savedAt) !== weekKeyOf(Date.now())) {
+    localStorage.removeItem('fl_endless_pending'); // last week's run — that league is closed
+    return;
+  }
+  endlessSyncing = true;
+  const panelOpen = () => gameRef && app.game === gameRef && !$('ov-gameover').classList.contains('hidden');
+  try {
+    const res = await Net.submitEndless(p.seed, p.moves, p.score, p.durationMs);
+    if (res && !res.error && res.verified) {
+      localStorage.removeItem('fl_endless_pending');
+      app.endless = res;
+      renderHome();
+      // league-only players deserve a name on the wall too
+      if (!localStorage.getItem('fl_name') && !(app.server && app.server.name)) {
+        Net.setName(genName()).then(r => {
+          if (r && !r.error && r.name) localStorage.setItem('fl_name', r.name);
+        });
+      }
+      if (panelOpen() && res.rank) {
+        $('go-percentile').textContent = `🏆 #${res.rank} this week` + (res.players > 1 ? ` of ${res.players.toLocaleString('en-US')}` : '');
+        $('go-streak').textContent = `Weekly best: ${(res.best || p.score).toLocaleString('en-US')}`;
+      }
+    } else if (res && res.error && !/timeout|fetch|network|http 5/i.test(String(res.error))) {
+      localStorage.removeItem('fl_endless_pending'); // permanent rejection — drop, never loop
+      if (panelOpen()) $('go-percentile').textContent = '🏆 Score banked locally';
+    } else {
+      // transient failure — pending stays; boot/reconnect retries it
+      if (panelOpen()) $('go-percentile').textContent = '📶 League sync pending…';
+    }
+  } finally {
+    endlessSyncing = false;
+  }
 }
 
 // Adaptive rank display: small player counts and top finishers get the exciting
@@ -861,7 +931,7 @@ function bumpLocalStreak() {
   save('fl_streak', app.streak);
 }
 
-function showResultPanel({ percentile, rank, players, submittedNow, endlessRes }) {
+function showResultPanel({ percentile, rank, players, submittedNow, endlessSync }) {
   const g = app.game;
   const endless = app.mode === 'endless';
   $('ov-gameover').classList.remove('hidden');
@@ -902,11 +972,11 @@ function showResultPanel({ percentile, rank, players, submittedNow, endlessRes }
     if (app.mode === 'practice') {
       const best = Number(localStorage.getItem('fl_practice_best_' + app.dateStr) || 0);
       $('go-streak').textContent = `Practice best: ${best.toLocaleString('en-US')}`;
-    } else if (endlessRes && endlessRes.rank) {
+    } else if (endlessSync) {
       pctEl.classList.remove('hidden');
-      pctEl.textContent = `🏆 #${endlessRes.rank} this week` + (endlessRes.players > 1 ? ` of ${endlessRes.players.toLocaleString('en-US')}` : '');
+      pctEl.textContent = '📶 Syncing…'; // syncEndless patches this in place
       $('go-streak').textContent = (g.score >= app.endlessBest ? '⭐ New best! · ' : '') +
-        `Weekly best: ${(endlessRes.best || g.score).toLocaleString('en-US')}`;
+        `Best: ${app.endlessBest.toLocaleString('en-US')}`;
     } else {
       $('go-streak').textContent = g.score >= app.endlessBest ? '⭐ New best!' : `Best: ${app.endlessBest.toLocaleString('en-US')}`;
     }
@@ -1000,6 +1070,9 @@ async function loadEndlessBoard() {
     app.endless = res;
     renderEndlessBoard(res);
     renderHome();
+  } else if (!app.endless) {
+    $('endless-lb-rank').textContent = '—';
+    $('endless-lb-players').textContent = 'Couldn’t load the league — try again.';
   }
 }
 
@@ -1011,13 +1084,14 @@ function renderEndlessBoard(en) {
     return;
   }
   rankEl.textContent = en.best > 0 && en.rank ? `#${en.rank} this week` : '∞';
-  $('endless-lb-players').textContent =
-    `${(en.players || 0).toLocaleString('en-US')} in the league` + (en.resetsAt ? ` · ${resetLabel(en.resetsAt)}` : '');
-  const myName = localStorage.getItem('fl_name');
+  const parts = [`${(en.players || 0).toLocaleString('en-US')} in the league`];
+  if (en.resetsAt) { const rl = resetLabel(en.resetsAt); if (rl) parts.push(rl); }
+  $('endless-lb-players').textContent = parts.join(' · ');
   const top = en.top10 || [];
   $('endless-lb-top10').innerHTML = top.length
     ? top.map(t => {
-        const mine = myName && t.name === myName && t.score === en.best;
+        // rank+score match — exact against the server's own numbers, no name heuristics
+        const mine = en.best > 0 && t.rank === en.rank && t.score === en.best;
         const medal = t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : t.rank;
         return `<div class="lb-row${mine ? ' me' : ''}"><span class="lb-rank">${medal}</span><span class="lb-name">${esc(t.name)}</span><span class="lb-pts">${t.score.toLocaleString('en-US')}</span></div>`;
       }).join('')
@@ -1157,6 +1231,7 @@ function bindUI() {
     updateRerollBtn();
     autosave();
     if (ev.gameOver) setTimeout(() => gameOverFlow(), 500);
+    else capGuard();
   });
 
   $('board').addEventListener('pointerdown', e => { if (app.bombMode) bombTap(e); });

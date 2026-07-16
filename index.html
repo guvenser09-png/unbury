@@ -35,6 +35,8 @@ body {
 }
 .screen { display: none; flex: 1; flex-direction: column; min-height: 0; }
 .screen.active { display: flex; }
+/* SE-class phones: the home stack may exceed 667px — scroll, never clip */
+#s-home { overflow-y: auto; }
 button { font-family: var(--font); border: none; cursor: pointer; color: var(--text-hi); background: none; }
 .hidden { display: none !important; }
 .muted { color: var(--text-lo); }
@@ -71,12 +73,14 @@ button { font-family: var(--font); border: none; cursor: pointer; color: var(--t
 .daily-sub-row .btn-secondary { flex: 1; }
 .countdown { margin-top: 12px; font-size: 12px; color: var(--text-lo); }
 .countdown span { color: var(--text-hi); font-weight: 700; font-variant-numeric: tabular-nums; }
-.endless-card { display: flex; flex-direction: column; gap: 8px; background: var(--surface);
-  border-radius: 20px; padding: 14px 18px; margin-top: 14px; text-align: center; }
+.endless-card { display: flex; flex-direction: column; gap: 6px; background: var(--surface);
+  border-radius: 20px; padding: 12px 16px; margin-top: 12px; text-align: center; }
 .endless-head { display: flex; align-items: baseline; justify-content: space-between; }
-.endless-title { font-size: 15px; font-weight: 800; letter-spacing: .06em; color: var(--success); }
+.endless-title { font-size: 14px; font-weight: 800; letter-spacing: .06em; color: var(--success); }
 .endless-reset { font-size: 11px; font-weight: 700; color: var(--text-lo); }
-.endless-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--text-lo); }
+/* wraps gracefully when scores hit 6-7 digits instead of clipping at the edge */
+.endless-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 14px;
+  font-size: 12px; font-weight: 700; color: var(--text-lo); }
 .cta.cta-endless { background: var(--success); color: #06251A; }
 .fair-note { text-align: center; color: var(--success); font-size: 12px; font-weight: 700; margin-top: auto; padding-top: 14px; }
 
@@ -177,7 +181,7 @@ input[type=range] { width: 130px; accent-color: var(--accent); }
 .lb-row .lb-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-row .lb-pts { font-variant-numeric: tabular-nums; }
 .lb-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-.lb-tabs button { flex: 1; padding: 9px; border-radius: 999px; font-size: 13px; font-weight: 800;
+.lb-tabs button { flex: 1; padding: 9px 2px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap;
   letter-spacing: .05em; background: var(--cell-empty); color: var(--text-lo); }
 .lb-tabs button.active { background: rgba(255,176,32,.15); color: var(--accent); }
 .hall-title { font-size: 12px; font-weight: 800; letter-spacing: .1em; color: var(--text-lo);
@@ -235,7 +239,6 @@ canvas { -webkit-user-drag: none; user-drag: none; }
         <span class="endless-title">∞ ENDLESS LEAGUE</span>
         <span id="endless-reset" class="endless-reset"></span>
       </div>
-      <div id="endless-status" class="muted" style="font-size:12px">Unlimited runs — your best score this week competes with the world</div>
       <button id="btn-endless" class="cta cta-endless">CHASE THE RECORD</button>
       <div class="endless-row">
         <span id="endless-best">Best: 0</span>
@@ -442,7 +445,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
 
 <div id="toast" class="hidden"></div>
 
-<script src="src/config.js?v=30"></script>
-<script type="module" src="src/main.js?v=30"></script>
+<script src="src/config.js?v=31"></script>
+<script type="module" src="src/main.js?v=31"></script>
 </body>
 </html>
