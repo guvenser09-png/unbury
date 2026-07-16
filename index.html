@@ -71,8 +71,13 @@ button { font-family: var(--font); border: none; cursor: pointer; color: var(--t
 .daily-sub-row .btn-secondary { flex: 1; }
 .countdown { margin-top: 12px; font-size: 12px; color: var(--text-lo); }
 .countdown span { color: var(--text-hi); font-weight: 700; font-variant-numeric: tabular-nums; }
-.endless-card { display: flex; align-items: center; justify-content: space-between; background: var(--surface);
-  border-radius: 20px; padding: 14px 18px; margin-top: 14px; }
+.endless-card { display: flex; flex-direction: column; gap: 8px; background: var(--surface);
+  border-radius: 20px; padding: 14px 18px; margin-top: 14px; text-align: center; }
+.endless-head { display: flex; align-items: baseline; justify-content: space-between; }
+.endless-title { font-size: 15px; font-weight: 800; letter-spacing: .06em; color: var(--success); }
+.endless-reset { font-size: 11px; font-weight: 700; color: var(--text-lo); }
+.endless-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--text-lo); }
+.cta.cta-endless { background: var(--success); color: #06251A; }
 .fair-note { text-align: center; color: var(--success); font-size: 12px; font-weight: 700; margin-top: auto; padding-top: 14px; }
 
 /* game */
@@ -226,8 +231,16 @@ canvas { -webkit-user-drag: none; user-drag: none; }
       <div class="countdown">Next dig in <span id="countdown">--:--:--</span></div>
     </div>
     <div class="endless-card">
-      <button id="btn-endless" class="btn-secondary big">ENDLESS</button>
-      <span id="endless-best" class="muted" style="font-size:13px;font-weight:700">Best: 0</span>
+      <div class="endless-head">
+        <span class="endless-title">∞ ENDLESS LEAGUE</span>
+        <span id="endless-reset" class="endless-reset"></span>
+      </div>
+      <div id="endless-status" class="muted" style="font-size:12px">Unlimited runs — your best score this week competes with the world</div>
+      <button id="btn-endless" class="cta cta-endless">CHASE THE RECORD</button>
+      <div class="endless-row">
+        <span id="endless-best">Best: 0</span>
+        <span id="endless-rank"></span>
+      </div>
     </div>
     <p class="fair-note">✓ provably fair — everyone digs the same board</p>
   </section>
@@ -349,6 +362,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
     <h2 id="lb-title">Leaderboard</h2>
     <div class="lb-tabs">
       <button id="tab-today" class="active">TODAY</button>
+      <button id="tab-endless">ENDLESS</button>
       <button id="tab-hall">ALL-TIME</button>
     </div>
     <div id="lb-today">
@@ -363,6 +377,13 @@ canvas { -webkit-user-drag: none; user-drag: none; }
         <p class="muted" id="lb-score" style="font-size:14px;margin-top:10px"></p>
         <p class="muted" style="font-size:12px;margin-top:12px" id="lb-note"></p>
       </div>
+    </div>
+    <div id="lb-endless" class="hidden">
+      <div class="lb-big" id="endless-lb-rank">—</div>
+      <p class="muted" id="endless-lb-players" style="font-size:14px"></p>
+      <div id="endless-lb-top10" style="margin-top:12px"></div>
+      <p class="muted" id="endless-lb-mine" style="font-size:14px;margin-top:10px"></p>
+      <p class="muted" style="font-size:12px;margin-top:12px">Unlimited runs, best one counts. League resets every Monday — verified like everything else.</p>
     </div>
     <div id="lb-hall" class="hidden">
       <div id="hall-body"><p class="muted" style="font-size:13px">Loading…</p></div>
@@ -421,7 +442,7 @@ canvas { -webkit-user-drag: none; user-drag: none; }
 
 <div id="toast" class="hidden"></div>
 
-<script src="src/config.js?v=29"></script>
-<script type="module" src="src/main.js?v=29"></script>
+<script src="src/config.js?v=30"></script>
+<script type="module" src="src/main.js?v=30"></script>
 </body>
 </html>

@@ -56,6 +56,24 @@ export async function submitRun(dateStr, moves, score, revealPctVal, durationMs)
   }, 15000);
 }
 
+// → { verified, improved, best, rank, players, top10, weekKey, resetsAt }
+// Endless league: the seed is client-chosen, so it ships with the moves and
+// the server re-simulates exactly like the daily validator.
+export async function submitEndless(seed, moves, score, durationMs) {
+  return call('fl-submit-endless', {
+    seed,
+    moves,
+    claimed_score: score,
+    duration_ms: durationMs,
+    client_version: 'web-1.3.0',
+  }, 15000);
+}
+
+// → { weekKey, resetsAt, players, top10, best, rank } — this week's league
+export async function getEndless() {
+  return call('fl-endless', {});
+}
+
 // → { name } or { error } — sets the public digger name
 export async function setName(name) {
   return call('fl-set-name', { name });

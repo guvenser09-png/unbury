@@ -31,7 +31,8 @@ const settings = load('fl_settings', {
 
 const app = {
   images: [], dateStr: '', faultNo: 0, seed: 0, image: null, obstacles: [],
-  mode: null, game: null, counted: false, runStart: 0,
+  mode: null, game: null, counted: false, runStart: 0, runSeed: 0,
+  endless: null, // this week's league snapshot from the server
   server: null, bombMode: false, paused: false,
   streak: load('fl_streak', { count: 0, best: 0, lastDate: null }),
   endlessBest: Number(localStorage.getItem('fl_endless_best') || 0),
@@ -99,6 +100,9 @@ async function boot() {
   };
   Net.flushQueue(onFlushed);
   window.addEventListener('online', () => Net.flushQueue(onFlushed));
+  Net.getEndless().then(res => {
+    if (res && !res.error) { app.endless = res; renderHome(); }
+  });
   Net.getDaily(app.dateStr).then(info => {
     if (info && !info.error) {
       app.server = info;
@@ -169,7 +173,18 @@ function renderHome() {
   $('fault-date').textContent = new Date(app.dateStr + 'T00:00:00Z')
     .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
   $('streak-num').textContent = app.streak.count;
-  $('endless-best').textContent = 'Best: ' + app.endlessBest.toLocaleString('en-US');
+  $('endless-best').textContent = 'All-time best: ' + app.endlessBest.toLocaleString('en-US');
+  const en = app.endless;
+  if (en && !en.error) {
+    $('endless-reset').textContent = en.resetsAt ? resetLabel(en.resetsAt) : '';
+    if (en.best > 0 && en.rank) {
+      $('endless-rank').textContent = `This week: ${en.best.toLocaleString('en-US')} · #${en.rank}`;
+      $('endless-rank').style.color = 'var(--success)';
+    } else {
+      $('endless-rank').textContent = (en.players || 0) > 0
+        ? `${en.players.toLocaleString('en-US')} in this week's league` : 'Be first on the board this week';
+    }
+  }
 
   const rec = dailyRecord();
   const att = attemptRecord();
@@ -239,6 +254,7 @@ function startGame(mode) {
     crypto.getRandomValues(buf);
     seed = buf[0];
   }
+  app.runSeed = seed;
   app.game = E.createGame({
     seed,
     obstacles: endless ? [] : app.obstacles,
@@ -759,11 +775,21 @@ async function finalizeRun() {
 
   let percentile = null, rank = null, players = null;
   let submittedNow = false;
+  let endlessRes = null;
 
   if (app.mode === 'endless') {
     if (g.score > app.endlessBest) {
       app.endlessBest = g.score;
       localStorage.setItem('fl_endless_best', String(g.score));
+    }
+    // every finished run enters the weekly league; the server keeps the best
+    if (Net.isOnlineMode() && g.score > 0) {
+      const res = await Net.submitEndless(app.runSeed, g.moves, g.score, durationMs);
+      if (res && !res.error && res.verified) {
+        endlessRes = res;
+        app.endless = res;
+        renderHome();
+      }
     }
   } else if (app.counted) {
     localStorage.removeItem('fl_attempt');
@@ -806,7 +832,15 @@ async function finalizeRun() {
     if (g.score > best) localStorage.setItem('fl_practice_best_' + app.dateStr, String(g.score));
   }
 
-  showResultPanel({ percentile, rank, players, submittedNow });
+  showResultPanel({ percentile, rank, players, submittedNow, endlessRes });
+}
+
+// "resets in 3d 14h" — from the league's resetsAt timestamp
+function resetLabel(resetsAt) {
+  const ms = Date.parse(resetsAt) - Date.now();
+  if (!(ms > 0)) return '';
+  const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000);
+  return d > 0 ? `resets in ${d}d ${h}h` : `resets in ${h}h`;
 }
 
 // Adaptive rank display: small player counts and top finishers get the exciting
@@ -827,7 +861,7 @@ function bumpLocalStreak() {
   save('fl_streak', app.streak);
 }
 
-function showResultPanel({ percentile, rank, players, submittedNow }) {
+function showResultPanel({ percentile, rank, players, submittedNow, endlessRes }) {
   const g = app.game;
   const endless = app.mode === 'endless';
   $('ov-gameover').classList.remove('hidden');
@@ -868,6 +902,11 @@ function showResultPanel({ percentile, rank, players, submittedNow }) {
     if (app.mode === 'practice') {
       const best = Number(localStorage.getItem('fl_practice_best_' + app.dateStr) || 0);
       $('go-streak').textContent = `Practice best: ${best.toLocaleString('en-US')}`;
+    } else if (endlessRes && endlessRes.rank) {
+      pctEl.classList.remove('hidden');
+      pctEl.textContent = `🏆 #${endlessRes.rank} this week` + (endlessRes.players > 1 ? ` of ${endlessRes.players.toLocaleString('en-US')}` : '');
+      $('go-streak').textContent = (g.score >= app.endlessBest ? '⭐ New best! · ' : '') +
+        `Weekly best: ${(endlessRes.best || g.score).toLocaleString('en-US')}`;
     } else {
       $('go-streak').textContent = g.score >= app.endlessBest ? '⭐ New best!' : `Best: ${app.endlessBest.toLocaleString('en-US')}`;
     }
@@ -944,10 +983,46 @@ function currentShareText() {
 
 function lbTab(which) {
   $('tab-today').classList.toggle('active', which === 'today');
+  $('tab-endless').classList.toggle('active', which === 'endless');
   $('tab-hall').classList.toggle('active', which === 'hall');
   $('lb-today').classList.toggle('hidden', which !== 'today');
+  $('lb-endless').classList.toggle('hidden', which !== 'endless');
   $('lb-hall').classList.toggle('hidden', which !== 'hall');
   if (which === 'hall') loadHall();
+  if (which === 'endless') loadEndlessBoard();
+}
+
+async function loadEndlessBoard() {
+  renderEndlessBoard(app.endless); // paint what we have, then refresh
+  if (!Net.isOnlineMode()) return;
+  const res = await Net.getEndless();
+  if (res && !res.error) {
+    app.endless = res;
+    renderEndlessBoard(res);
+    renderHome();
+  }
+}
+
+function renderEndlessBoard(en) {
+  const rankEl = $('endless-lb-rank');
+  if (!en || en.error) {
+    rankEl.textContent = '—';
+    $('endless-lb-players').textContent = Net.isOnlineMode() ? 'Loading…' : 'Offline — the league syncs when you reconnect.';
+    return;
+  }
+  rankEl.textContent = en.best > 0 && en.rank ? `#${en.rank} this week` : '∞';
+  $('endless-lb-players').textContent =
+    `${(en.players || 0).toLocaleString('en-US')} in the league` + (en.resetsAt ? ` · ${resetLabel(en.resetsAt)}` : '');
+  const myName = localStorage.getItem('fl_name');
+  const top = en.top10 || [];
+  $('endless-lb-top10').innerHTML = top.length
+    ? top.map(t => {
+        const mine = myName && t.name === myName && t.score === en.best;
+        const medal = t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : t.rank;
+        return `<div class="lb-row${mine ? ' me' : ''}"><span class="lb-rank">${medal}</span><span class="lb-name">${esc(t.name)}</span><span class="lb-pts">${t.score.toLocaleString('en-US')}</span></div>`;
+      }).join('')
+    : '<p class="muted" style="font-size:13px">No runs yet this week — set the first score.</p>';
+  $('endless-lb-mine').textContent = en.best > 0 ? `Your best this week: ${en.best.toLocaleString('en-US')}` : 'Play an Endless run to enter the league.';
 }
 
 async function loadHall() {
@@ -978,6 +1053,10 @@ function renderHall(h) {
   if (h.streaks && h.streaks.length) {
     html += '<div class="hall-title">🔥 LONGEST STREAKS</div>';
     html += h.streaks.map((s, i) => row(i, s.name, `${s.best} day${s.best > 1 ? 's' : ''}${s.alive ? ' 🔥' : ''}`)).join('');
+  }
+  if (h.endless && h.endless.length) {
+    html += '<div class="hall-title">∞ ENDLESS LEGENDS</div>';
+    html += h.endless.map((e, i) => row(i, e.name, e.score.toLocaleString('en-US'))).join('');
   }
   if (h.career && h.career.length) {
     html += '<div class="hall-title">⛏️ CAREER POINTS</div>';
@@ -1138,6 +1217,7 @@ function bindUI() {
   $('btn-leaderboard').addEventListener('click', openLeaderboard);
   $('btn-lb-close').addEventListener('click', () => $('ov-board').classList.add('hidden'));
   $('tab-today').addEventListener('click', () => lbTab('today'));
+  $('tab-endless').addEventListener('click', () => lbTab('endless'));
   $('tab-hall').addEventListener('click', () => lbTab('hall'));
 
   $('btn-name-dice').addEventListener('click', () => { $('name-input').value = randName(); SFX.button(); });
