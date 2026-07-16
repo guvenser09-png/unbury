@@ -1063,7 +1063,10 @@ function bindUI() {
 
   $('btn-reroll').addEventListener('click', async () => {
     const g = app.game;
-    if (!g || g.rerollUsed || g.over || app.paused || app.bombMode) return;
+    if (!g || g.over || app.paused) return;
+    // never reject silently — the button must always explain itself
+    if (app.bombMode) { toast('Place your 3×3 blast first'); return; }
+    if (g.rerollUsed) { toast('Reroll spent — you get a fresh one next run'); return; }
     const ok = await adFlow();
     if (!ok) { toast('No ad available right now'); return; }
     localStorage.setItem('fl_reroll_taught', '1');
