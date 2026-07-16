@@ -6,9 +6,12 @@ import * as Share from './share.js';
 import * as Net from './net.js';
 import { initAds } from './ads.js';
 import * as Notify from './notify.js';
+import * as Portal from './portal.js';
 
 const $ = id => document.getElementById(id);
 const cfg = window.FL_CONFIG || {};
+// portal builds must not point players off-site — share cards drop the URL there
+const SHARE_URL = window.FL_PORTAL ? '' : (cfg.shareUrl || 'guvenser09-png.github.io/unbury');
 
 function load(key, fallback) {
   try { return { ...fallback, ...(JSON.parse(localStorage.getItem(key)) || {}) }; }
@@ -50,6 +53,8 @@ async function boot() {
       keys.forEach(k => localStorage.removeItem(k));
     }
   }
+  await Portal.init();
+  Portal.loadingStart();
   initAds();
   $('boot-bar').style.width = '30%';
   try {
@@ -117,6 +122,7 @@ async function boot() {
   // refresh the 7-evening reminder plan; skips today once it's played
   Notify.reschedule({ playedToday: !!dailyRecord(), streak: app.streak.count });
   $('boot-bar').style.width = '100%';
+  Portal.loadingStop();
   setTimeout(() => {
     renderHome();
     show('s-home');
@@ -275,6 +281,7 @@ function startGame(mode) {
   app.runStart = Date.now();
   lastMilestone = app.mode === 'daily' ? E.revealPct(app.game) : 0;
   show('s-game');
+  Portal.gameplayStart();
   updateHUD();
   renderTray();
   updateRerollBtn();
@@ -555,7 +562,7 @@ function checkMilestone(pct) {
   for (const m of [25, 50, 75, 100]) {
     if (pct >= m && lastMilestone < m) {
       lastMilestone = m;
-      if (m === 100) { SFX.revealFinale(); toast('FULLY REVEALED!'); }
+      if (m === 100) { SFX.revealFinale(); toast('FULLY REVEALED!'); Portal.happytime(); }
       else { SFX.milestone(); toast(m === 50 ? `${m}% — it's ${app.image.category}…` : `${m}% revealed`); }
     }
   }
@@ -602,6 +609,7 @@ function doGuess(pick) {
   const now = performance.now();
   if (ev.correct) {
     SFX.fullClear();
+    Portal.happytime();
     if (renderer) {
       renderer.goldFlash = now;
       renderer.float(27, `🔍 +${ev.bonus}`, now, '#3DDC97');
@@ -667,12 +675,13 @@ async function saveName() {
 // ---------- rewarded stubs (portal adapter) ----------
 
 async function adFlow() {
-  // Portal SDK adapter: window.FL_SDK.requestRewarded resolves true when the ad
-  // completes. Without a portal (native app/self-host) these perks are simply
-  // free features — no ad language is shown anywhere in that case.
+  // window.FL_SDK.requestRewarded resolves true = grant, false = no grant.
+  // Each backend sets its own failure policy in ads.js — portal rules forbid
+  // granting the reward on ad errors. Without any ad backend the perks are
+  // simply free features and no ad language is shown anywhere.
   if (window.FL_SDK && window.FL_SDK.requestRewarded) {
     try { return await window.FL_SDK.requestRewarded(); }
-    catch { toast('On the house 🎁'); return true; }
+    catch { return false; }
   }
   return true;
 }
@@ -682,6 +691,7 @@ async function adFlow() {
 async function gameOverFlow() {
   const g = app.game;
   if (!g || !g.over) return;
+  Portal.gameplayStop();
   SFX.gameOver();
   renderer.gameOverCrack = performance.now();
   $('board').classList.add('dimmed');
@@ -699,10 +709,11 @@ async function gameOverFlow() {
 
 async function bombAccept() {
   const ok = await adFlow();
-  if (!ok) { bombDecline(); return; }
+  if (!ok) { toast('No ad available right now'); bombDecline(); return; }
   $('ov-gameover').classList.add('hidden');
   $('go-step-bomb').classList.add('hidden');
   app.bombMode = true;
+  Portal.gameplayStart();
   $('bomb-hint').classList.remove('hidden');
   $('board').classList.remove('dimmed');
   renderer.gameOverCrack = 0;
@@ -734,6 +745,7 @@ function bombTap(e) {
 async function finalizeRun() {
   const g = app.game;
   if (!g || !g.over) return; // never finalize a game that isn't actually over
+  Portal.gameplayStop();
   if (!g.ended) E.applyMove(g, { t: 'end' });
   const durationMs = Date.now() - app.runStart;
   const pct = E.revealPct(g);
@@ -906,7 +918,7 @@ function openShare() {
     rankText: rankLabel(rec.rank, rec.players, rec.percentile),
     guessedAt: rec.guessedAt != null ? rec.guessedAt : null,
     streak: app.streak.count,
-    url: cfg.shareUrl || 'guvenser09-png.github.io/unbury',
+    url: SHARE_URL,
   });
   $('share-preview').src = shareCanvas.toDataURL('image/png');
   $('ov-share').classList.remove('hidden');
@@ -919,7 +931,7 @@ function currentShareText() {
     rankText: rankLabel(rec.rank, rec.players, rec.percentile),
     guessedAt: rec.guessedAt != null ? rec.guessedAt : null,
     streak: app.streak.count, score: rec.score,
-    url: `https://${cfg.shareUrl || 'guvenser09-png.github.io/unbury'}/`,
+    url: SHARE_URL ? `https://${SHARE_URL}/` : '',
   });
 }
 
@@ -1017,10 +1029,11 @@ function bindUI() {
   $('btn-pause').addEventListener('click', () => {
     if (app.bombMode || !app.game || app.game.over) return;
     app.paused = true;
+    Portal.gameplayStop();
     $('btn-endrun').textContent = app.mode === 'daily' ? 'END RUN' : 'RESTART';
     $('ov-pause').classList.remove('hidden');
   });
-  $('btn-resume').addEventListener('click', () => { app.paused = false; $('ov-pause').classList.add('hidden'); });
+  $('btn-resume').addEventListener('click', () => { app.paused = false; $('ov-pause').classList.add('hidden'); Portal.gameplayStart(); });
   $('btn-quit').addEventListener('click', () => {
     app.paused = false;
     $('ov-pause').classList.add('hidden');
@@ -1047,7 +1060,7 @@ function bindUI() {
     const g = app.game;
     if (!g || g.rerollUsed || g.over || app.paused || app.bombMode) return;
     const ok = await adFlow();
-    if (!ok) return;
+    if (!ok) { toast('No ad available right now'); return; }
     localStorage.setItem('fl_reroll_taught', '1');
     const ev = E.applyMove(g, { t: 'reroll' });
     if (ev.error) return;
@@ -1169,6 +1182,7 @@ function bindUI() {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && app.game && !app.game.over && $('s-game').classList.contains('active') && !app.paused) {
       app.paused = true;
+      Portal.gameplayStop();
       $('ov-pause').classList.remove('hidden');
       autosave();
     }

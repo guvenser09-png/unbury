@@ -16,11 +16,14 @@ export function initAds() {
   const cg = window.CrazyGames && window.CrazyGames.SDK;
   if (cg && cg.ad) {
     window.FL_SDK = {
-      requestRewarded: () => new Promise((resolve, reject) => {
+      requestRewarded: () => new Promise((resolve) => {
         cg.ad.requestAd('rewarded', {
           adStarted: () => {},
           adFinished: () => resolve(true),
-          adError: (e) => reject(e),
+          // portal rule: never grant the reward on an ad error — EXCEPT when
+          // the platform has ads disabled entirely (Basic Launch), where the
+          // perk stays free so gameplay is identical to the ad-free builds
+          adError: (e) => resolve(/disabled/i.test(String((e && e.code) || (e && e.message) || e || ''))),
         });
       }),
     };
@@ -42,7 +45,7 @@ export function initAds() {
 
     window.FL_SDK = {
       requestRewarded: () => new Promise((resolve) => {
-        if (!ready) { prepare(); resolve(false); return; } // adFlow treats false as no-fill → grants free
+        if (!ready) { prepare(); resolve(true); return; } // native no-fill: grant free — no dead buttons in the app
         ready = false;
         let rewarded = false;
         const subs = [];

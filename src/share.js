@@ -88,9 +88,11 @@ export function renderCard({ faultNo, dateLabel, image, revealed, revealPctVal, 
   ctx.fillStyle = '#98A5B3';
   ctx.font = '700 40px ui-rounded, system-ui, sans-serif';
   ctx.fillText('Can you unbury more?', W / 2, 1180);
-  ctx.fillStyle = '#FFB020';
-  ctx.font = '800 44px ui-rounded, system-ui, sans-serif';
-  ctx.fillText(url, W / 2, 1240);
+  if (url) {
+    ctx.fillStyle = '#FFB020';
+    ctx.font = '800 44px ui-rounded, system-ui, sans-serif';
+    ctx.fillText(url, W / 2, 1240);
+  }
   ctx.fillStyle = '#3DDC97';
   ctx.font = '700 28px ui-rounded, system-ui, sans-serif';
   ctx.fillText('✓ provably fair — same pieces for everyone', W / 2, 1300);
@@ -128,7 +130,8 @@ export function shareText({ faultNo, revealPctVal, rankText, guessedAt, streak, 
   if (rankText) parts.push(`\u{1F3C6} ${rankText}`);
   if (guessedAt != null) parts.push(`\u{1F50D} @${guessedAt}%`);
   if (streak > 1) parts.push(`\u{1F525} ${streak}`);
-  return `${parts.join(' · ')}\n${bar} ${score.toLocaleString('en-US')} pts\nSame pieces. Same board. Beat me:\n${url}`;
+  const tail = url ? `Same pieces. Same board. Beat me:\n${url}` : 'Same pieces. Same board. Beat me!';
+  return `${parts.join(' · ')}\n${bar} ${score.toLocaleString('en-US')} pts\n${tail}`;
 }
 
 function capPlugins() {
