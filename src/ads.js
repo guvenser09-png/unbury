@@ -41,7 +41,18 @@ export function initAds() {
       AdMob.prepareRewardVideoAd({ adId: ids.admobRewardedId, npa: !ids.personalized })
         .then(() => { ready = true; })
         .catch(() => { ready = false; });
-    AdMob.initialize({}).then(prepare).catch(() => {});
+    // UMP consent first (form only appears where required, e.g. EEA); any
+    // consent failure falls through — ads may stay empty there, game never blocks
+    AdMob.requestConsentInfo()
+      .then(info => {
+        if (info && info.isConsentFormAvailable && info.status === 'REQUIRED') {
+          return AdMob.showConsentForm().catch(() => {});
+        }
+      })
+      .catch(() => {})
+      .then(() => AdMob.initialize({}))
+      .then(prepare)
+      .catch(() => {});
 
     window.FL_SDK = {
       requestRewarded: () => new Promise((resolve) => {
@@ -50,11 +61,11 @@ export function initAds() {
         let rewarded = false;
         const subs = [];
         const cleanup = () => { subs.forEach(s => s.remove && s.remove()); prepare(); };
-        // NOTE v1.1: confirm exact event names for the installed plugin major
-        // version (RewardAdPluginEvents.Rewarded / .Dismissed in v5+).
+        // event names verified against @capacitor-community/admob v8
+        // (RewardAdPluginEvents.Rewarded / .Dismissed)
         Promise.resolve(AdMob.addListener('onRewardedVideoAdReward', () => { rewarded = true; })).then(s => subs.push(s));
-        Promise.resolve(AdMob.addListener('onRewardedVideoAdClosed', () => { cleanup(); resolve(rewarded); })).then(s => subs.push(s));
-        AdMob.showRewardVideoAd().catch(() => { cleanup(); resolve(false); });
+        Promise.resolve(AdMob.addListener('onRewardedVideoAdDismissed', () => { cleanup(); resolve(rewarded); })).then(s => subs.push(s));
+        AdMob.showRewardVideoAd().catch(() => { cleanup(); resolve(true); }); // show failed = treat as no-fill
       }),
     };
   }

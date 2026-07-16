@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/guvenser09-png/unbury#readme",
   "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
     "@capacitor/core": "^8.4.1",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/haptics": "^8.0.2",

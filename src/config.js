@@ -10,6 +10,6 @@ window.FL_CONFIG = {
 // Ad configuration (v1.1): fill AdMob rewarded unit id to activate ads in the
 // native app. Empty = ad-free build, no ad wording anywhere in the UI.
 window.FL_ADS = {
-  admobRewardedId: '',
+  admobRewardedId: 'ca-app-pub-1508388843514752/7927208004',
   personalized: false, // non-personalized ads: no ATT prompt required
 };
