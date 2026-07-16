@@ -10,8 +10,13 @@ import * as Portal from './portal.js';
 
 const $ = id => document.getElementById(id);
 const cfg = window.FL_CONFIG || {};
-// portal builds must not point players off-site — share cards drop the URL there
-const SHARE_URL = window.FL_PORTAL ? '' : (cfg.shareUrl || 'guvenser09-png.github.io/unbury');
+// Share destination per platform: the native app advertises its App Store page
+// (shared cards should convert to installs), the web build keeps the web URL,
+// portal builds must not point players off-site at all.
+const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const SHARE_URL = window.FL_PORTAL ? ''
+  : IS_NATIVE ? 'apps.apple.com/app/id6789700779'
+  : (cfg.shareUrl || 'guvenser09-png.github.io/unbury');
 
 function load(key, fallback) {
   try { return { ...fallback, ...(JSON.parse(localStorage.getItem(key)) || {}) }; }
@@ -931,7 +936,7 @@ function currentShareText() {
     rankText: rankLabel(rec.rank, rec.players, rec.percentile),
     guessedAt: rec.guessedAt != null ? rec.guessedAt : null,
     streak: app.streak.count, score: rec.score,
-    url: SHARE_URL ? `https://${SHARE_URL}/` : '',
+    url: SHARE_URL ? `https://${SHARE_URL}` : '',
   });
 }
 
