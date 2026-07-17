@@ -16,10 +16,22 @@ export async function init() {
   try {
     if (typeof cg.init === 'function') await cg.init(); // SDK v3: modules only after init()
     sdk = cg;
+    // portal mute takes priority over in-game audio settings (SDK requirement)
+    if (sdk.game && sdk.game.addSettingsChangeListener) {
+      sdk.game.addSettingsChangeListener(() => applyMute());
+    }
   } catch {
     sdk = null; // SDK present but refused (e.g. running outside the portal)
   }
 }
+
+let muteCb = null;
+function applyMute() {
+  try {
+    if (muteCb && sdk && sdk.game && sdk.game.settings) muteCb(!!sdk.game.settings.muteAudio);
+  } catch { /* settings not available — stay unmuted */ }
+}
+export function onMuteChange(cb) { muteCb = cb; applyMute(); }
 
 function game() { return sdk && sdk.game ? sdk.game : null; }
 function call(fn) { try { const g = game(); if (g && g[fn]) g[fn](); } catch { /* portal quirks never break the game */ } }

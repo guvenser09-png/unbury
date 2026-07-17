@@ -60,6 +60,7 @@ async function boot() {
     }
   }
   await Portal.init();
+  Portal.onMuteChange(m => { portalMuted = m; SFX.setEnabled(!m && settings.sound); });
   Portal.loadingStart();
   initAds();
   $('boot-bar').style.width = '30%';
@@ -1369,9 +1370,10 @@ function confirmBox(title, msg, cb) {
 $('confirm-yes').addEventListener('click', () => { $('ov-confirm').classList.add('hidden'); if (confirmCb) confirmCb(); });
 $('confirm-no').addEventListener('click', () => $('ov-confirm').classList.add('hidden'));
 
+let portalMuted = false; // portal-level mute wins over the in-game toggle
 function applySettings() {
   save('fl_settings', settings);
-  SFX.setEnabled(settings.sound);
+  SFX.setEnabled(settings.sound && !portalMuted);
   SFX.setHaptics(settings.haptics);
 }
 
