@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<script>window.FL_PORTAL = true;</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0E1116">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Unbury">
+<title>Unbury — the daily dig</title>
+<style>
+:root {
+  --bg0: #0E1116; --board-bg: #1A2029; --cell-empty: #232B36; --cell-stroke: #2E3945;
+  --overburden: #39424E; --surface: #1E252F; --text-hi: #F2F5F9; --text-lo: #98A5B3;
+  --accent: #FFB020; --accent-hot: #FF7A3D; --success: #3DDC97; --danger: #FF5A67;
+  --font: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  background:
+    linear-gradient(178deg, #12161D 0 25%, #141924 25% 50%, #111520 50% 75%, #0C0F14 75% 100%),
+    var(--bg0);
+  color: var(--text-hi);
+  font-family: var(--font);
+  -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+#app {
+  max-width: 430px; height: 100vh; height: 100dvh; margin: 0 auto;
+  display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 12px);
+  position: relative;
+}
+.screen { display: none; flex: 1; flex-direction: column; min-height: 0; }
+.screen.active { display: flex; }
+/* SE-class phones: the home stack may exceed 667px — scroll, never clip */
+#s-home { overflow-y: auto; }
+button { font-family: var(--font); border: none; cursor: pointer; color: var(--text-hi); background: none; }
+.hidden { display: none !important; }
+.muted { color: var(--text-lo); }
+
+/* boot */
+#s-boot { justify-content: center; align-items: center; gap: 18px; }
+.wordmark { font-size: 34px; font-weight: 800; letter-spacing: 0.04em; }
+.wordmark .crack { color: var(--accent); font-weight: 800; margin: 0 2px; }
+#boot-tag { color: var(--text-lo); font-size: 14px; }
+.progress { width: 180px; height: 4px; background: var(--cell-empty); border-radius: 2px; overflow: hidden; }
+#boot-bar { width: 10%; height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+
+/* home */
+.home-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 0 12px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border-radius: 999px;
+  padding: 8px 14px; font-size: 15px; font-weight: 700; }
+.chip.big { font-size: 18px; padding: 10px 20px; }
+.icon-btn { width: 44px; height: 44px; border-radius: 999px; background: var(--surface); font-size: 19px;
+  display: flex; align-items: center; justify-content: center; }
+.daily-card { background: var(--surface); border-radius: 20px; padding: 18px; text-align: center; }
+.daily-title { font-size: 13px; font-weight: 800; letter-spacing: .12em; color: var(--text-lo); }
+.daily-title span { color: var(--accent); }
+.daily-date { font-size: 12px; color: var(--text-lo); margin-top: 2px; }
+#home-art { width: 176px; height: 176px; margin: 14px auto 6px; border-radius: 12px; display: block;
+  background: var(--board-bg); image-rendering: pixelated; }
+#daily-status { min-height: 20px; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.cta { width: 100%; background: var(--accent); color: #1A1204; font-size: 17px; font-weight: 800;
+  letter-spacing: .02em; padding: 15px; border-radius: 999px; margin-top: 2px; }
+.cta:active { transform: scale(.98); }
+.btn-secondary { background: none; border: 1.5px solid var(--cell-stroke); color: var(--text-hi);
+  font-size: 14px; font-weight: 700; padding: 11px 16px; border-radius: 999px; }
+.btn-secondary.big { font-size: 16px; padding: 13px 26px; }
+.daily-sub-row { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+.daily-sub-row .btn-secondary { flex: 1; }
+.countdown { margin-top: 12px; font-size: 12px; color: var(--text-lo); }
+.countdown span { color: var(--text-hi); font-weight: 700; font-variant-numeric: tabular-nums; }
+.endless-card { display: flex; flex-direction: column; gap: 6px; background: var(--surface);
+  border-radius: 20px; padding: 12px 16px; margin-top: 12px; text-align: center; }
+.endless-head { display: flex; align-items: baseline; justify-content: space-between; }
+.endless-title { font-size: 14px; font-weight: 800; letter-spacing: .06em; color: var(--success); }
+.endless-reset { font-size: 11px; font-weight: 700; color: var(--text-lo); }
+/* wraps gracefully when scores hit 6-7 digits instead of clipping at the edge */
+.endless-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 14px;
+  font-size: 12px; font-weight: 700; color: var(--text-lo); }
+.cta.cta-endless { background: var(--success); color: #06251A; }
+.fair-note { text-align: center; color: var(--success); font-size: 12px; font-weight: 700; margin-top: auto; padding-top: 14px; }
+
+/* game */
+.hud { display: flex; align-items: center; justify-content: space-between; padding: 2px 0 10px; min-height: 56px; }
+.hud-score { text-align: center; }
+#score { font-size: 30px; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+#score-sub { font-size: 11px; }
+.hud-right { display: flex; align-items: center; gap: 7px; width: 86px; justify-content: flex-end; }
+.meter { width: 52px; height: 4px; background: var(--cell-empty); border-radius: 2px; overflow: hidden; }
+#reveal-fill { width: 0; height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s; }
+#reveal-pct { font-size: 12px; font-weight: 700; color: var(--accent); min-width: 32px; }
+#practice-band { text-align: center; background: rgba(255,176,32,.14); color: var(--accent); font-size: 12px;
+  font-weight: 800; letter-spacing: .08em; border-radius: 8px; padding: 5px; margin-bottom: 8px; }
+.board-wrap { display: flex; justify-content: center; }
+#board { touch-action: none; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.45); transition: filter .6s; }
+#board.dimmed { filter: saturate(.3) brightness(.8); }
+.tray-row { margin-top: auto; padding-top: 14px; position: relative; }
+.tray { display: flex; gap: 8px; }
+.slot { flex: 1; height: 108px; background: var(--surface); border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; touch-action: none; position: relative; }
+.slot.unfit { opacity: .35; }
+.slot.dragging canvas { opacity: .25; }
+.slot.warn { box-shadow: 0 0 0 2px var(--accent); }
+.reroll { position: absolute; top: -8px; right: 0; transform: translateY(-100%);
+  display: flex; align-items: center; gap: 6px; background: var(--surface); border-radius: 999px;
+  padding: 8px 13px; font-size: 14px; font-weight: 700; }
+#guess-slot { height: 50px; display: flex; align-items: center; justify-content: center; }
+.guess-chip { display: block; background: rgba(255,176,32,.14); color: var(--accent);
+  border: 1.5px solid var(--accent); border-radius: 999px; padding: 9px 20px; font-size: 14px;
+  font-weight: 800; letter-spacing: .04em; animation: guessPulse 2.4s ease-in-out infinite; }
+@keyframes guessPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.guess-option { background: var(--cell-empty); border-radius: 12px; padding: 13px; font-size: 15px;
+  font-weight: 700; letter-spacing: .04em; }
+.guess-option:active { transform: scale(.98); }
+#reroll-badge { font-size: 10px; font-weight: 800; color: var(--success); letter-spacing: .05em; }
+#bomb-hint { text-align: center; color: var(--accent-hot); font-size: 13px; font-weight: 700; padding: 8px 0; }
+
+/* first-time hand demo: shows the drag gesture, no reading required */
+#tut-hand { position: fixed; inset: 0; z-index: 70; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.hand-track { position: relative; width: 60px; height: 300px; }
+.hand, .hand-piece { position: absolute; animation: handDrag 2.2s ease-in-out infinite; }
+.hand { font-size: 46px; left: 4px; top: 10px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); }
+.hand-piece { left: 10px; top: 0; width: 36px; height: 36px; border-radius: 9px; background: #FFC145;
+  opacity: .95; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+@keyframes handDrag {
+  0% { transform: translateY(250px); opacity: 0; }
+  14% { transform: translateY(250px); opacity: 1; }
+  60% { transform: translateY(0); opacity: 1; }
+  78% { transform: translateY(0); opacity: 0; }
+  100% { transform: translateY(250px); opacity: 0; }
+}
+#tut-hand p { margin-top: 14px; background: var(--surface); border-radius: 999px; padding: 11px 20px;
+  font-size: 13px; font-weight: 700; max-width: 320px; text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+
+/* drag layer */
+#drag-piece { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; will-change: transform; }
+#drag-piece.returning { transition: transform .18s cubic-bezier(.55,0,1,.45), opacity .18s; opacity: 0; }
+
+/* overlays */
+.overlay { position: fixed; inset: 0; z-index: 80; background: rgba(8,10,14,.72);
+  display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(3px); }
+.panel { width: 100%; max-width: 380px; background: var(--surface); border-radius: 22px; padding: 22px;
+  text-align: center; max-height: 88dvh; overflow-y: auto; }
+.panel h2 { font-size: 19px; font-weight: 800; margin-bottom: 14px; }
+.panel .stack { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.panel .cta { margin-top: 0; }
+.go-score { font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 8px 0 2px; }
+#go-art { width: 208px; height: 208px; border-radius: 14px; background: var(--board-bg); display: block;
+  margin: 0 auto; image-rendering: pixelated; }
+#go-plaque { margin-top: 10px; background: rgba(255,176,32,.15); color: var(--accent); font-weight: 800;
+  font-size: 14px; letter-spacing: .06em; border-radius: 10px; padding: 8px; }
+#go-caption { font-size: 12px; margin-top: 6px; }
+#go-reveal-line { font-size: 15px; font-weight: 700; margin-top: 12px; }
+#go-percentile { margin: 10px auto 0; background: rgba(255,176,32,.15); color: var(--accent); }
+#go-streak { font-size: 14px; font-weight: 700; margin-top: 10px; min-height: 20px; }
+#go-stats { font-size: 12px; margin-top: 2px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 2px;
+  border-bottom: 1px solid var(--cell-stroke); font-size: 15px; font-weight: 600; }
+.setting-row:last-of-type { border-bottom: none; }
+.toggle { width: 50px; height: 28px; border-radius: 999px; background: var(--cell-empty); position: relative; transition: background .2s; }
+.toggle::after { content: ''; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--text-lo);
+  top: 3px; left: 3px; transition: all .2s; }
+.toggle.on { background: var(--success); }
+.toggle.on::after { left: 25px; background: #fff; }
+input[type=range] { width: 130px; accent-color: var(--accent); }
+#share-preview { width: 100%; border-radius: 14px; display: block; }
+.share-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.share-grid .cta { grid-column: 1 / -1; }
+.lb-big { font-size: 40px; font-weight: 800; color: var(--accent); margin: 6px 0; }
+.lb-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px;
+  font-size: 14px; font-weight: 700; }
+.lb-row.me { background: rgba(255,176,32,.14); color: var(--accent); }
+.lb-row .lb-rank { width: 26px; color: var(--text-lo); text-align: right; }
+.lb-row.me .lb-rank { color: var(--accent); }
+.lb-row .lb-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-row .lb-pts { font-variant-numeric: tabular-nums; }
+.lb-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.lb-tabs button { flex: 1; padding: 9px 2px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap;
+  letter-spacing: .05em; background: var(--cell-empty); color: var(--text-lo); }
+.lb-tabs button.active { background: rgba(255,176,32,.15); color: var(--accent); }
+.hall-title { font-size: 12px; font-weight: 800; letter-spacing: .1em; color: var(--text-lo);
+  text-align: left; margin: 14px 4px 4px; }
+.hall-title:first-child { margin-top: 0; }
+#name-input { background: var(--cell-empty); border: 1.5px solid var(--cell-stroke); border-radius: 12px;
+  padding: 12px; color: var(--text-hi); font-family: var(--font); font-weight: 700; font-size: 16px;
+  text-align: center; flex: 1; min-width: 0; outline: none; }
+#name-input:focus { border-color: var(--accent); }
+.tut-step { display: flex; gap: 12px; align-items: flex-start; text-align: left; margin-bottom: 14px; }
+.tut-step b { color: var(--accent); font-size: 18px; }
+.tut-step p { font-size: 14px; color: var(--text-lo); line-height: 1.45; }
+.tut-step p strong { color: var(--text-hi); }
+
+#toast { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 24px); left: 50%; transform: translateX(-50%);
+  background: var(--surface); color: var(--text-hi); font-size: 14px; font-weight: 700; padding: 11px 20px;
+  border-radius: 20px; z-index: 120; box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  max-width: calc(100vw - 32px); white-space: normal; text-align: center;
+  pointer-events: none; }
+canvas { -webkit-user-drag: none; user-drag: none; }
+
+@media (min-width: 700px) {
+  #app { max-width: 480px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="s-boot" class="screen active">
+    <h1 class="wordmark">UN<span class="crack">⟋</span>BURY</h1>
+    <p id="boot-tag">Same pieces for everyone. Provably fair.</p>
+    <div class="progress"><div id="boot-bar"></div></div>
+  </section>
+
+  <section id="s-home" class="screen">
+    <header class="home-head">
+      <button id="btn-streak" class="chip">🔥 <span id="streak-num">0</span></button>
+      <div class="wordmark" style="font-size:17px">UN<span class="crack">⟋</span>BURY</div>
+      <button id="btn-settings" class="icon-btn" aria-label="Settings">⚙️</button>
+    </header>
+    <div class="daily-card">
+      <div class="daily-title">DAILY DIG <span id="fault-no">#1</span></div>
+      <div class="daily-date" id="fault-date"></div>
+      <canvas id="home-art" width="160" height="160"></canvas>
+      <div id="daily-status" class="muted">Something is hiding under today's board…</div>
+      <button id="btn-daily" class="cta">PLAY TODAY'S DAILY</button>
+      <div class="daily-sub-row">
+        <button id="btn-share-home" class="btn-secondary hidden">SHARE</button>
+        <button id="btn-leaderboard" class="btn-secondary">TODAY'S RESULTS</button>
+      </div>
+      <div class="countdown">Next dig in <span id="countdown">--:--:--</span></div>
+    </div>
+    <div class="endless-card">
+      <div class="endless-head">
+        <span class="endless-title">∞ ENDLESS LEAGUE</span>
+        <span id="endless-reset" class="endless-reset"></span>
+      </div>
+      <button id="btn-endless" class="cta cta-endless">CHASE THE RECORD</button>
+      <div class="endless-row">
+        <span id="endless-best">Best: 0</span>
+        <span id="endless-rank"></span>
+      </div>
+    </div>
+    <p class="fair-note">✓ provably fair — everyone digs the same board</p>
+  </section>
+
+  <section id="s-game" class="screen">
+    <div class="hud">
+      <button id="btn-pause" class="icon-btn" aria-label="Pause">⏸</button>
+      <div class="hud-score"><div id="score">0</div><div id="score-sub" class="muted"></div></div>
+      <div class="hud-right"><div class="meter" id="reveal-meter"><div id="reveal-fill"></div></div><span id="reveal-pct">0%</span></div>
+    </div>
+    <div id="practice-band" class="hidden">PRACTICE — NOT COUNTED</div>
+    <div class="board-wrap"><canvas id="board"></canvas></div>
+    <div id="guess-slot"><button id="btn-guess" class="guess-chip hidden">🔍 I KNOW WHAT IT IS</button></div>
+    <div class="tray-row">
+      <button id="btn-reroll" class="reroll">🔄 <span>Reroll</span> <span id="reroll-badge">×1</span></button>
+      <div class="tray">
+        <div class="slot" data-slot="0"><canvas></canvas></div>
+        <div class="slot" data-slot="1"><canvas></canvas></div>
+        <div class="slot" data-slot="2"><canvas></canvas></div>
+      </div>
+    </div>
+    <div id="bomb-hint" class="hidden">💣 Tap the board to aim your 3×3 blast</div>
+  </section>
+</div>
+
+<div id="tut-hand" class="hidden">
+  <div class="hand-track"><span class="hand-piece"></span><span class="hand">👆</span></div>
+  <p>Drag pieces onto the board — fill a row or column to clear it</p>
+</div>
+
+<div id="drag-piece" class="hidden"><canvas></canvas></div>
+
+<div id="ov-pause" class="overlay hidden">
+  <div class="panel">
+    <h2>Paused</h2>
+    <div class="stack">
+      <button id="btn-resume" class="cta">RESUME</button>
+      <button id="btn-endrun" class="btn-secondary">END RUN</button>
+      <button id="btn-howto" class="btn-secondary">HOW TO PLAY</button>
+      <button id="btn-quit" class="btn-secondary">HOME</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov-confirm" class="overlay hidden">
+  <div class="panel">
+    <h2 id="confirm-title">Are you sure?</h2>
+    <p id="confirm-msg" class="muted" style="font-size:14px"></p>
+    <div class="stack">
+      <button id="confirm-yes" class="cta">YES</button>
+      <button id="confirm-no" class="btn-secondary">KEEP PLAYING</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov-gameover" class="overlay hidden">
+  <div class="panel">
+    <div id="go-step-bomb" class="hidden">
+      <h2>💣 Clear any 3×3 and keep going?</h2>
+      <p class="muted" style="font-size:14px">One per run. Everyone gets the same offer — it's fair.</p>
+      <div class="stack">
+        <button id="btn-bomb-yes" class="cta">💣 CLEAR 3×3 &amp; CONTINUE</button>
+        <button id="btn-bomb-no" class="btn-secondary">NO THANKS, I'M DONE</button>
+      </div>
+    </div>
+    <div id="go-step-result" class="hidden">
+      <div id="go-reveal-wrap">
+        <canvas id="go-art" width="160" height="160"></canvas>
+        <div id="go-plaque" class="hidden"></div>
+        <div id="go-caption" class="muted hidden"></div>
+      </div>
+      <div id="go-reveal-line">You revealed <b id="go-reveal-pct" style="color:var(--accent)">0%</b></div>
+      <div class="go-score" id="go-score">0</div>
+      <div id="go-stats" class="muted"></div>
+      <div id="go-percentile" class="chip big hidden"></div>
+      <div id="go-streak"></div>
+      <div class="stack">
+        <button id="btn-share" class="cta">SHARE</button>
+        <button id="btn-see-board" class="btn-secondary">SEE TODAY'S RESULTS</button>
+        <button id="btn-again" class="btn-secondary">PRACTICE AGAIN</button>
+        <button id="btn-go-home" class="btn-secondary">HOME</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="ov-share" class="overlay hidden">
+  <div class="panel">
+    <img id="share-preview" alt="Share card preview">
+    <div class="share-grid">
+      <button id="btn-share-native" class="cta">SHARE</button>
+      <button id="btn-copy-img" class="btn-secondary">COPY IMAGE</button>
+      <button id="btn-copy-text" class="btn-secondary">COPY TEXT</button>
+      <button id="btn-download" class="btn-secondary">DOWNLOAD</button>
+      <button id="btn-share-back" class="btn-secondary">BACK</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov-settings" class="overlay hidden">
+  <div class="panel">
+    <h2>Settings</h2>
+    <div class="setting-row"><span>Sound</span><button class="toggle" id="tog-sound" aria-label="Sound"></button></div>
+    <div class="setting-row"><span>Haptics</span><button class="toggle" id="tog-haptics" aria-label="Haptics"></button></div>
+    <div class="setting-row"><span>Screen shake</span><button class="toggle" id="tog-shake" aria-label="Screen shake"></button></div>
+    <div class="setting-row"><span>Reduced motion</span><button class="toggle" id="tog-motion" aria-label="Reduced motion"></button></div>
+    <div class="setting-row"><span>Drag offset</span><input type="range" id="rng-offset" min="40" max="96" step="4"></div>
+    <div class="setting-row"><span>Digger name</span><button id="btn-name-change" class="btn-secondary" style="padding:8px 16px">CHANGE</button></div>
+    <div class="setting-row hidden" id="row-notify"><span>Daily reminder</span><button class="toggle" id="tog-notify" aria-label="Daily reminder"></button></div>
+    <div class="stack">
+      <button id="btn-settings-close" class="cta">DONE</button>
+    </div>
+    <p class="muted" style="font-size:11px;margin-top:12px" id="device-hash"></p>
+  </div>
+</div>
+
+<div id="ov-board" class="overlay hidden">
+  <div class="panel">
+    <h2 id="lb-title">Leaderboard</h2>
+    <div class="lb-tabs">
+      <button id="tab-today" class="active">TODAY</button>
+      <button id="tab-endless">ENDLESS</button>
+      <button id="tab-hall">ALL-TIME</button>
+    </div>
+    <div id="lb-today">
+      <div id="lb-locked" class="hidden">
+        <p style="font-size:40px;margin:10px 0">🔒</p>
+        <p class="muted" style="font-size:14px">Play today's dig to unlock results.</p>
+      </div>
+      <div id="lb-content" class="hidden">
+        <div class="lb-big" id="lb-percentile">—</div>
+        <p class="muted" id="lb-players" style="font-size:14px"></p>
+        <div id="lb-top10" style="margin-top:12px"></div>
+        <p class="muted" id="lb-score" style="font-size:14px;margin-top:10px"></p>
+        <p class="muted" style="font-size:12px;margin-top:12px" id="lb-note"></p>
+      </div>
+    </div>
+    <div id="lb-endless" class="hidden">
+      <div class="lb-big" id="endless-lb-rank">—</div>
+      <p class="muted" id="endless-lb-players" style="font-size:14px"></p>
+      <div id="endless-lb-top10" style="margin-top:12px"></div>
+      <p class="muted" id="endless-lb-mine" style="font-size:14px;margin-top:10px"></p>
+      <p class="muted" style="font-size:12px;margin-top:12px">Unlimited runs, best one counts. League resets every Monday — verified like everything else.</p>
+    </div>
+    <div id="lb-hall" class="hidden">
+      <div id="hall-body"><p class="muted" style="font-size:13px">Loading…</p></div>
+      <p class="muted" style="font-size:12px;margin-top:12px">Every entry is a server-verified run. History is permanent — dig your way in.</p>
+    </div>
+    <div class="stack"><button id="btn-lb-close" class="cta">CLOSE</button></div>
+  </div>
+</div>
+
+<div id="ov-guess" class="overlay hidden">
+  <div class="panel" style="position:relative">
+    <button id="btn-guess-x" class="icon-btn" aria-label="Close"
+      style="position:absolute;top:12px;right:12px;width:36px;height:36px;font-size:15px">✕</button>
+    <h2>🔍 What's buried here?</h2>
+    <p class="muted" id="guess-stakes" style="font-size:13px;margin-bottom:12px">The less you've dug, the bigger the bonus. One guess per run — choose wisely.</p>
+    <div class="stack" id="guess-options"></div>
+    <div class="stack" style="margin-top:10px"><button id="btn-guess-cancel" class="btn-secondary">KEEP DIGGING</button></div>
+  </div>
+</div>
+
+<div id="ov-notify" class="overlay hidden">
+  <div class="panel">
+    <h2>⛏️ Never miss a dig?</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:6px">One quiet reminder each evening — only if you haven’t dug yet. Your streak will thank you.</p>
+    <div class="stack">
+      <button id="btn-notify-yes" class="cta">REMIND ME</button>
+      <button id="btn-notify-no" class="btn-secondary">NO THANKS</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov-name" class="overlay hidden">
+  <div class="panel">
+    <h2>⛏️ Name your digger</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:12px">This is how you'll appear on the world leaderboard. No account, no password — just a name.</p>
+    <div style="display:flex;gap:8px;align-items:stretch">
+      <input id="name-input" maxlength="16" autocomplete="off" spellcheck="false">
+      <button id="btn-name-dice" class="icon-btn" aria-label="Random name" style="width:48px;height:auto">🎲</button>
+    </div>
+    <div class="stack">
+      <button id="btn-name-save" class="cta">SAVE NAME</button>
+      <button id="btn-name-skip" class="btn-secondary">LATER</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov-tutorial" class="overlay hidden">
+  <div class="panel">
+    <h2>How to dig</h2>
+    <div class="tut-step"><b>1</b><p><strong>Drag pieces onto the 8×8 board.</strong> Fill a full row or column to clear it. No fits left = run over.</p></div>
+    <div class="tut-step"><b>2</b><p><strong>Something is buried under today's board.</strong> Clearing lines and breaking rock reveals the hidden picture.</p></div>
+    <div class="tut-step"><b>3</b><p><strong>Everyone gets the exact same pieces today.</strong> One counted run per day — make it count, then practice freely.</p></div>
+    <div class="stack"><button id="btn-tut-go" class="cta">START DIGGING</button></div>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script src="src/config.js?v=32"></script>
+<script type="module" src="src/main.js?v=32"></script>
+</body>
+</html>

@@ -22,6 +22,10 @@ find dist/portal -name '.DS_Store' -delete
 find dist/portal -name '._*' -delete
 (cd dist/portal && zip -rqX ../unbury-crazygames.zip .)
 
+# keep the committed externally-hosted copy in sync (served at /unbury/portal/)
+rm -rf portal
+cp -R dist/portal portal
+
 FILES=$(find dist/portal -type f | wc -l | tr -d ' ')
 SIZE=$(du -h dist/unbury-crazygames.zip | cut -f1)
-echo "portal package: dist/unbury-crazygames.zip ($SIZE, $FILES files)"
+echo "portal package: dist/unbury-crazygames.zip ($SIZE, $FILES files) + portal/ synced"
