@@ -1278,8 +1278,10 @@ function bindUI() {
     } finally { shareBusy = false; }
   });
   // WKWebView has no download manager — hide DOWNLOAD in the native app
+  // (and the privacy link: the App Store listing already carries it there)
   if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
     $('btn-download').style.display = 'none';
+    $('privacy-link').style.display = 'none';
   }
   $('btn-copy-img').addEventListener('click', async () => {
     toast(await Share.copyImage(shareCanvas) ? 'Image copied' : 'Copy failed — try download');
