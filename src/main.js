@@ -719,8 +719,10 @@ async function adFlow() {
   // granting the reward on ad errors. Without any ad backend the perks are
   // simply free features and no ad language is shown anywhere.
   if (window.FL_SDK && window.FL_SDK.requestRewarded) {
+    SFX.adPause(); // free the audio session — iOS can stall the ad video otherwise
     try { return await window.FL_SDK.requestRewarded(); }
     catch { return false; }
+    finally { SFX.adResume(); }
   }
   return true;
 }

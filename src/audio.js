@@ -23,6 +23,15 @@ function ensure() {
 export function unlock() { ensure(); }
 export function setEnabled(on) { enabled = on; }
 
+// Rewarded ads: on iOS the ad's video can stall if the game's AudioContext
+// holds the audio session — release it for the ad, take it back after.
+export function adPause() {
+  try { if (ctx && ctx.state === 'running') ctx.suspend(); } catch { /* best effort */ }
+}
+export function adResume() {
+  try { if (ctx && ctx.state === 'suspended') ctx.resume(); } catch { /* best effort */ }
+}
+
 function tone({ type = 'sine', f0 = 440, f1 = null, dur = 0.1, attack = 0.002, gain = 0.25, delay = 0 }) {
   if (!enabled || !ensure()) return;
   const t = ctx.currentTime + delay;
