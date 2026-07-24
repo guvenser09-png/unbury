@@ -11,7 +11,7 @@ export const COLOR_COUNT = 6;
 export const FULL_CLEAR_BONUS = 300;
 export const OBSTACLE_POINTS = 5;
 export const GUESS_PENALTY = 40;
-export const GUESS_UNLOCK_PCT = 35; // enough of the picture to actually recognize it
+export const GUESS_UNLOCK_PCT = 20; // early guessing is a skill — reward the sharp eye
 export const MAX_MOVES = 400;
 
 export function mulberry32(seed) {
