@@ -11,6 +11,7 @@ export const COLOR_COUNT = 6;
 export const FULL_CLEAR_BONUS = 300;
 export const OBSTACLE_POINTS = 5;
 export const GUESS_PENALTY = 40;
+export const GUESS_UNLOCK_PCT = 35; // enough of the picture to actually recognize it
 export const MAX_MOVES = 400;
 
 export function mulberry32(seed) {
@@ -301,7 +302,7 @@ export function applyMove(state, move) {
     if (state.guessUsed) return { error: 'guess already used' };
     if (state.answerIndex == null) return { error: 'no guess in this mode' };
     const pct = revealPct(state);
-    if (pct < 20) return { error: 'guess locked below 20%' };
+    if (pct < GUESS_UNLOCK_PCT) return { error: 'guess locked' };
     if (!Number.isInteger(move.pick) || move.pick < 0) return { error: 'bad pick' };
     state.guessUsed = true;
     const correct = move.pick === state.answerIndex;

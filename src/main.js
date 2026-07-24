@@ -323,7 +323,7 @@ function updateHUD() {
     const pct = E.revealPct(g);
     $('reveal-fill').style.width = pct + '%';
     $('reveal-pct').textContent = pct + '%';
-    const showGuess = !g.over && !g.guessUsed && g.answerIndex != null && pct >= 20;
+    const showGuess = !g.over && !g.guessUsed && g.answerIndex != null && pct >= E.GUESS_UNLOCK_PCT;
     $('btn-guess').classList.toggle('hidden', !showGuess);
     if (showGuess) $('btn-guess').textContent = `🔍 I KNOW WHAT IT IS · +${(100 - pct) * 2}`;
     scoreEl.style.color = '';
